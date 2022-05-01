@@ -11,9 +11,6 @@ const JobGroup = () => {
 
   const handleDragEnd = (result) => {
     if (!result.destination) return;
-    console.log(result);
-    //const oldIndex = groups.findIndex((v) => v.id === result.source.index);
-    //const newIndex = groups.findIndex((v) => v.id === result.destination.index);
     const oldIndex = result.source.index;
     const newIndex = result.destination.index;
 
@@ -30,28 +27,15 @@ const JobGroup = () => {
     <DragDropContext onDragEnd={handleDragEnd}>
       <Droppable droppableId="droppable">
         {(provided, snapshot) => (
-          <div
-            {...provided.droppableProps}
-            ref={provided.innerRef}
-            style={getListStyle(snapshot.isDraggingOver)}
-          >
+          <div {...provided.droppableProps} ref={provided.innerRef} style={getListStyle(snapshot.isDraggingOver)}>
             {groups.map((v, i) => (
               <Draggable draggableId={v.id} key={v.id} index={i}>
                 {(provided, snapshot) => (
                   <div
                     ref={provided.innerRef}
                     {...provided.draggableProps}
-                    style={getItemStyle(
-                      snapshot.isDragging,
-                      provided.draggableProps.style
-                    )}
-                  >
-                    <GroupEntry
-                      key={v.id}
-                      id={v.id}
-                      groupId={v.id}
-                      handle={provided.dragHandleProps}
-                    ></GroupEntry>
+                    style={getItemStyle(snapshot.isDragging, provided.draggableProps.style)}>
+                    <GroupEntry key={v.id} id={v.id} groupId={v.id} handle={provided.dragHandleProps}></GroupEntry>
                   </div>
                 )}
               </Draggable>

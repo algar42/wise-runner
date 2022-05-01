@@ -2,11 +2,8 @@ import React from "react";
 import { useEffect } from "react";
 import "./App.css";
 import { useSelector, useDispatch } from "react-redux";
-import {
-  appInitAsync,
-  globalSettingsInitAsync,
-} from "./features/application/applicationSlice";
-import { groupInit } from "./features/job/jobSlice";
+import { appInitAsync, globalSettingsInitAsync } from "./features/application/applicationSlice";
+import { groupInit, runNextProgram } from "./features/job/jobSlice";
 import { Grid, Container } from "@mui/material";
 import WiseAppBar from "./components/WiseAppBar";
 import JobGroup from "./components/JobGroup";
@@ -21,6 +18,7 @@ function App() {
     dispatch(appInitAsync());
     dispatch(globalSettingsInitAsync());
     dispatch(groupInit());
+    window.fileAPI.handleAppFinish((event, args) => dispatch(runNextProgram(args)));
     //console.log(workdir);
   }, []);
 
@@ -37,15 +35,13 @@ function App() {
             height: "90vh",
             //backgroundColor: "#fafafa",
             overflow: "hidden",
-          }}
-        >
+          }}>
           <Scrollbars
             autoHide
             // Hide delay in ms
             autoHideTimeout={500}
             // Duration for hide animation in ms.
-            autoHideDuration={200}
-          >
+            autoHideDuration={200}>
             <JobGroup />
           </Scrollbars>
         </Container>

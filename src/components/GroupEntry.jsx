@@ -10,11 +10,7 @@ import { Box, Checkbox } from "@mui/material";
 import { css, jsx } from "@emotion/react";
 import { useState } from "react";
 import EditGroupTitle from "./EditGroupTitle";
-import {
-  groupTitleEdited,
-  groupEnabled,
-  dragFileMove,
-} from "../features/job/jobSlice";
+import { groupTitleEdited, groupEnabled, dragFileMove } from "../features/job/jobSlice";
 //import FileEntry from "./FileEntry";
 import { MemoFileEntry } from "./FileEntry";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
@@ -25,18 +21,20 @@ const GroupEntry = (props) => {
   const accSummHeight = 35;
   const { groupId } = props;
   const [editGroupDialogOpen, setDialogOpen] = useState(false);
+  const [groupExpanded, setGroupExpanded] = useState(false);
 
   const dispatch = useDispatch();
+
+  const handleGroupExpanded = (event, expanded) => {
+    setGroupExpanded(expanded);
+  };
 
   const handleGroupEnabled = (event) => {
     const enabled = event.target.checked;
     dispatch(groupEnabled({ groupId, enabled }));
   };
 
-  const group = useSelector(
-    (state) => state.job.value.groups.find((e) => e.id === groupId),
-    shallowEqual
-  );
+  const group = useSelector((state) => state.job.value.groups.find((e) => e.id === groupId), shallowEqual);
 
   const handleGroupDialogOpen = (event) => {
     event.stopPropagation();
@@ -77,6 +75,7 @@ const GroupEntry = (props) => {
     <div>
       <Accordion
         TransitionProps={{ unmountOnExit: true }}
+        expanded={groupExpanded}
         disableGutters
         square
         elevation={0}
@@ -87,7 +86,7 @@ const GroupEntry = (props) => {
             background-color: rgba(230, 230, 230, 1);
           `
         }
-      >
+        onChange={(event, expanded) => handleGroupExpanded(event, expanded)}>
         <AccordionSummary
           css={css`
             height: ${accSummHeight}px;
@@ -98,8 +97,7 @@ const GroupEntry = (props) => {
               min-height: ${accSummHeight}px;
               margin: 0;
             }
-          `}
-        >
+          `}>
           <div {...props.handle}>
             <DragHandle />
           </div>
@@ -117,8 +115,7 @@ const GroupEntry = (props) => {
               height: ${accSummHeight}px;
               flex-grow: 1;
               overflow: hidden;
-            `}
-          >
+            `}>
             <Typography
               variant="subtitle1"
               component="div"
@@ -128,8 +125,7 @@ const GroupEntry = (props) => {
                 flex-grow: 1;
                 overflow: hidden;
                 display: inline-block;
-              `}
-            >
+              `}>
               {group.title}
             </Typography>
             <ModeEditOutlineOutlinedIcon
@@ -150,7 +146,7 @@ const GroupEntry = (props) => {
             />
           </Box>
 
-          <GroupMenu groupId={groupId} />
+          <GroupMenu groupId={groupId} handleExpanded={handleGroupExpanded} />
         </AccordionSummary>
         <DragDropContext onDragEnd={handleFileDragEnd}>
           <AccordionDetails sx={{ borderTop: "1px solid rgba(0, 0, 0, .125)" }}>
@@ -158,23 +154,10 @@ const GroupEntry = (props) => {
               {(provided, snapshot) => (
                 <div {...provided.droppableProps} ref={provided.innerRef}>
                   {group.files.map((v, i) => (
-                    <Draggable
-                      draggableId={v}
-                      key={v}
-                      index={i}
-                      isDragDisabled={!group.isEnabled}
-                    >
+                    <Draggable draggableId={v} key={v} index={i} isDragDisabled={!group.isEnabled}>
                       {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                        >
-                          <MemoFileEntry
-                            key={v}
-                            fileId={v}
-                            groupId={groupId}
-                            handle={provided.dragHandleProps}
-                          />
+                        <div ref={provided.innerRef} {...provided.draggableProps}>
+                          <MemoFileEntry key={v} fileId={v} groupId={groupId} handle={provided.dragHandleProps} />
                         </div>
                       )}
                     </Draggable>

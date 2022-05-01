@@ -27,8 +27,7 @@ export default function MainMenu() {
         aria-haspopup="true"
         aria-expanded={open ? "true" : undefined}
         onClick={handleClick}
-        sx={{ minWidth: "48px" }}
-      >
+        sx={{ minWidth: "48px" }}>
         <MenuIcon />
       </IconButton>
 
@@ -39,10 +38,13 @@ export default function MainMenu() {
         onClose={handleClose}
         MenuListProps={{
           "aria-labelledby": "main-button",
-        }}
-      >
-        <MenuItem onClick={handleClose}>Jobs</MenuItem>
-        <MenuItem onClick={handleClose}>Settings</MenuItem>
+        }}>
+        <MenuItem dense onClick={handleClose}>
+          Jobs
+        </MenuItem>
+        <MenuItem dense onClick={handleClose}>
+          Settings
+        </MenuItem>
       </Menu>
     </Box>
   );

@@ -7,6 +7,10 @@ const args = require("yargs").argv;
 const app = electron.app;
 const BrowserWindow = electron.BrowserWindow;
 const basepath = app.getPath("documents");
+const appRunner = require("./runApp");
+const { readdir } = require("fs/promises");
+
+let sasProces = [];
 
 const initfolders = initFolders(args, basepath);
 
@@ -23,16 +27,37 @@ async function initDatabase(path, name, defaults) {
   return databases[name].db.get("db").value();
 }
 
-async function handleFileOpen() {
+async function handleFileOpen(baseDir) {
   const { canceled, filePaths } = await dialog.showOpenDialog({
-    defaultPath: initfolders.workPath,
+    defaultPath: baseDir || initfolders.workPath,
     filters: [{ name: "SAS Program", extensions: ["sas"] }],
-    properties: ["openFile", "multiSelections"],
+    properties: ["openFile", "multiSelections", "dontAddToRecent"],
   });
+  //console.log(filePaths);
   if (canceled) {
     return [];
   } else {
     return filePaths;
+  }
+}
+
+async function handleDirOpen() {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    defaultPath: initfolders.workPath,
+    filters: [{ name: "SAS Program", extensions: ["sas"] }],
+    properties: ["openDirectory", "dontAddToRecent"],
+  });
+  if (canceled) {
+    return [];
+  } else {
+    try {
+      const dir = await readdir(filePaths[0]);
+      const files = dir.filter((e) => path.extname(e) === ".sas").map((e) => path.join(filePaths[0], e));
+      return files;
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
   }
 }
 
@@ -41,7 +66,8 @@ app.whenReady().then(() => {
   if (databases.globCfgDb) {
     //console.log(databases.globCfgDb.db.get("global").value());
   }
-  ipcMain.handle("openFile", handleFileOpen);
+  ipcMain.handle("openFile", (event, dir) => handleFileOpen(dir));
+  ipcMain.handle("openDir", handleDirOpen);
   ipcMain.handle("getInit", getInit);
   ipcMain.handle("getDb", async (event, dbname, key) => {
     return databases[dbname].db.get(key).value();
@@ -53,6 +79,21 @@ app.whenReady().then(() => {
   ipcMain.handle("saveDb", async (event, dbname, data) => {
     databases[dbname].db.get("db").set(data).save();
     return databases[dbname].db.get("db").value();
+  });
+  ipcMain.handle("runApp", (event, args) => {
+    let appr = new appRunner(args.fileId, args.app, (args) => {
+      mainWindow.webContents.send("runAppExit", args);
+      sasProces = sasProces.filter((el) => el.pid !== args.pid);
+      //console.log(sasProces);
+    });
+    let res = appr.getState();
+    if (res.error) {
+      appr = null;
+      return res;
+    } else {
+      sasProces.push({ pid: res.pid, proc: appr });
+      return res;
+    }
   });
 });
 

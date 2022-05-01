@@ -16,27 +16,14 @@ export default function WiseAppBar() {
         </Typography>
         <Typography variant="body2" component="div" sx={{ flexGrow: 1 }}>
           <Box sx={{ paddingTop: 0 }}>JOB:</Box>
-          <Typography
-            variant="inherit"
-            sx={isSaved ? {} : { fontStyle: "italic" }}
-          >
+          <Typography variant="inherit" sx={isSaved ? {} : { fontStyle: "italic" }}>
             {title} {isSaved ? "" : "*"}
           </Typography>
         </Typography>
-        <Button
-          size="small"
-          variant="contained"
-          sx={{ padding: "0 10px", mr: 1 }}
-          disabled={!isRunable}
-        >
+        <Button size="small" variant="contained" sx={{ padding: "0 10px", mr: 1 }} disabled={!isRunable}>
           RUN JOB
         </Button>
-        <Button
-          size="small"
-          variant="contained"
-          sx={{ padding: "0 10px" }}
-          onClick={() => dispatch(groupInit())}
-        >
+        <Button size="small" variant="contained" sx={{ padding: "0 10px" }} onClick={() => dispatch(groupInit())}>
           ADD GROUP
         </Button>
         <MainMenu />

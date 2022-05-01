@@ -7,29 +7,58 @@ import Typography from "@mui/material/Typography";
 import DragIndicatorOutlinedIcon from "@mui/icons-material/DragIndicatorOutlined";
 import { Box, Checkbox } from "@mui/material";
 import { css, jsx } from "@emotion/react";
-import { fileEnabled, fileHide } from "../features/job/jobSlice";
+import { fileEnabled, fileHide, runApp } from "../features/job/jobSlice";
 import BadgeNotifier from "./BadgeNotifier";
 import { useSelector, useDispatch, shallowEqual } from "react-redux";
 import PriorityToggleGroup from "./PriorityToggleGroup";
 import { useSlideScroll } from "../app/useSlideScroll";
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 import FileContextMenu from "./FileContextMenu";
 
 const FileEntry = (props) => {
+  const [elapsedTime, setElapsedTime] = useState(0);
   const accSummHeight = 25;
   const { fileId, groupId } = props;
   const scrollRef = useSlideScroll();
   const [contextMenu, setContextMenu] = useState(null);
-  const file = useSelector(
-    (state) => state.job.value.files.find((e) => e.id === fileId),
-    shallowEqual
-  );
+  //const [alertOpen, setAlertOpen] = useState(false);
+  const file = useSelector((state) => state.job.value.files.find((e) => e.id === fileId), shallowEqual);
 
-  const groupEnabled = useSelector(
-    (state) => state.job.value.groups.find((e) => e.id === groupId).isEnabled
+  const groupEnabled = useSelector((state) => state.job.value.groups.find((e) => e.id === groupId).isEnabled);
+
+  const { sasExecPath, sasCfgPath, sasParams, multiThreading } = useSelector(
+    (state) => state.application.value.settings
   );
+  console.log(sasExecPath);
 
   const dispatch = useDispatch();
+
+  const convertSeconds = (seconds) => {
+    var convert = function (x) {
+      return x < 10 ? "0" + x : x;
+    };
+    return (
+      convert(parseInt(seconds / (60 * 60))) +
+      ":" +
+      convert(parseInt((seconds / 60) % 60)) +
+      ":" +
+      convert(seconds % 60)
+    );
+  };
+
+  useEffect(() => {
+    let interval = null;
+
+    if (file.isRunning) {
+      interval = setInterval(() => {
+        setElapsedTime((elapsedTime) => elapsedTime + 1);
+      }, 1000);
+    } else if (!file.isRunning) {
+      clearInterval(interval);
+      setElapsedTime(0);
+    }
+    return () => clearInterval(interval);
+  }, [file.isRunning, elapsedTime]);
 
   const handleContextMenuClose = () => {
     setContextMenu(null);
@@ -38,6 +67,12 @@ const FileEntry = (props) => {
     const hide = !file.isHidden;
     dispatch(fileHide({ fileId, hide }));
     setContextMenu(null);
+  };
+
+  const handleContextMenuAppRun = () => {
+    setContextMenu(null);
+    //console.log(SasExecPath);
+    dispatch(runApp({ fileId, sasExecPath, sasCfgPath, sasParams }));
   };
 
   const handleContextMenu = (event) => {
@@ -54,8 +89,9 @@ const FileEntry = (props) => {
 
   const handleFileEnabled = (event) => {
     const enabled = event.target.checked;
+    console.log(enabled);
     dispatch(fileEnabled({ fileId, enabled }));
-    dispatch(fileHide({ fileId, hide: false }));
+    enabled && dispatch(fileHide({ fileId, hide: false }));
   };
 
   const DragHandle = () => (
@@ -82,8 +118,7 @@ const FileEntry = (props) => {
           background-color: rgba(230, 230, 230, 1);
         `
       }
-      onContextMenu={handleContextMenu}
-    >
+      onContextMenu={handleContextMenu}>
       <AccordionSummary
         css={css`
           height: ${accSummHeight}px;
@@ -94,8 +129,7 @@ const FileEntry = (props) => {
             min-height: ${accSummHeight}px;
             margin: 0;
           }
-        `}
-      >
+        `}>
         <div {...props.handle}>
           <DragHandle />
         </div>
@@ -119,11 +153,15 @@ const FileEntry = (props) => {
           disableRipple
           onClick={(e) => e.stopPropagation()}
           onChange={handleFileEnabled}
-          checked={file.isEnabled && true}
+          checked={file.isEnabled}
         />
-        <div ref={scrollRef} style={{ width: "80px", overflow: "hidden" }}>
-          <PriorityToggleGroup disabled={!file.isEnabled || !groupEnabled} />
-        </div>
+
+        {multiThreading && (
+          <div ref={scrollRef} style={{ width: "80px", overflow: "hidden" }}>
+            <PriorityToggleGroup disabled={!file.isEnabled || !groupEnabled} />
+          </div>
+        )}
+
         <Box
           css={css`
             line-height: ${accSummHeight}px;
@@ -131,8 +169,7 @@ const FileEntry = (props) => {
             flex-grow: 1;
             overflow: hidden;
             padding-left: 5px;
-          `}
-        >
+          `}>
           <Typography
             variant="subtitle2"
             component="div"
@@ -146,18 +183,13 @@ const FileEntry = (props) => {
             `}
             sx={
               (!file.isEnabled || !groupEnabled ? { color: "#aaaaaa" } : {},
-              file.isHidden ? { fontStyle: "italic" } : {})
-            }
-          >
-            {file.file.name.toUpperCase()}
+              file.isHidden ? { fontStyle: "italic", color: "#777777" } : {})
+            }>
+            {file.file.name.toUpperCase()} {file.isRunning && `[${convertSeconds(elapsedTime)}]`}
           </Typography>
         </Box>
 
-        <BadgeNotifier
-          count={5}
-          disabled={!file.isEnabled || !groupEnabled}
-          icon="error"
-        />
+        <BadgeNotifier count={5} disabled={!file.isEnabled || !groupEnabled} icon="error" />
         <BadgeNotifier
           count={Math.floor(Math.random() * 100)}
           disabled={!file.isEnabled || !groupEnabled}
@@ -168,19 +200,14 @@ const FileEntry = (props) => {
           disabled={!file.isEnabled || !groupEnabled}
           icon="info"
         />
-        <BadgeNotifier
-          count={0}
-          disabled={!file.isEnabled || !groupEnabled}
-          icon="success"
-        />
+        <BadgeNotifier count={0} disabled={!file.isEnabled || !groupEnabled} icon="success" />
       </AccordionSummary>
-      <AccordionDetails sx={{ borderTop: "1px solid rgba(0, 0, 0, .125)" }}>
-        {JSON.stringify(file)}
-      </AccordionDetails>
+      <AccordionDetails sx={{ borderTop: "1px solid rgba(0, 0, 0, .125)" }}>{JSON.stringify(file)}</AccordionDetails>
       <FileContextMenu
         contextMenu={contextMenu}
         handleClose={handleContextMenuClose}
         handleHide={handleContextMenuFileHide}
+        handleAppRun={handleContextMenuAppRun}
         isHidden={file.isHidden}
       />
     </Accordion>

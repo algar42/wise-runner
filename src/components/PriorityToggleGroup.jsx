@@ -40,8 +40,7 @@ export default function PriorityToggleGroup(props) {
         }}
         value={filePriority}
         exclusive
-        onChange={handleChange}
-      >
+        onChange={handleChange}>
         <ToggleButton sx={buttonStyle} value={1}>
           1
         </ToggleButton>

@@ -16,23 +16,25 @@ export const applicationSlice = createSlice({
       //console.log(action.payload);
     },
     globalSettingsInit: (state, action) => {
+      //console.log(action);
       state.value.settings = action.payload;
+      console.log(state.value.settings);
     },
   },
 });
 
 // Action creators are generated for each case reducer function
-export const { appInit } = applicationSlice.actions;
+export const { appInit, globalSettingsInit } = applicationSlice.actions;
 
 export const appInitAsync = () => async (dispatch) => {
   const init = await window.fileAPI.getInit();
-  console.log(init);
+  //console.log(init);
   dispatch(appInit(init.workPath));
 };
 export const globalSettingsInitAsync = () => async (dispatch) => {
   const init = await window.fileAPI.getDb("globCfgDb", "global");
-  console.log(init);
-  dispatch(appInit(init));
+  //console.log(init);
+  dispatch(globalSettingsInit(init));
 };
 
 export default applicationSlice.reducer;

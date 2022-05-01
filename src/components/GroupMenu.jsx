@@ -4,15 +4,15 @@ import Menu from "@mui/material/Menu";
 import Box from "@mui/material/Box";
 import MenuItem from "@mui/material/MenuItem";
 import MenuIcon from "@mui/icons-material/Menu";
-import { addFilesAsync, setGroupShowHidden } from "../features/job/jobSlice";
+import { addFilesAsync, addDirAsync, setGroupShowHidden } from "../features/job/jobSlice";
 import { useDispatch, useSelector } from "react-redux";
 
 export default function GroupMenu(props) {
   const [anchorEl, setAnchorEl] = React.useState(null);
   const open = Boolean(anchorEl);
   const dispatch = useDispatch();
-  const { groupId } = props;
-  const { hasHiddenFiles } = useSelector((state) =>
+  const { groupId, handleExpanded } = props;
+  const { hasHiddenFiles, isDir, baseDir } = useSelector((state) =>
     state.job.value.groups.find((e) => e.id === groupId)
   );
 
@@ -27,9 +27,16 @@ export default function GroupMenu(props) {
 
   const handleAddFiles = (event) => {
     event.stopPropagation();
-
-    dispatch(addFilesAsync(groupId));
+    dispatch(addFilesAsync(groupId, baseDir));
     setAnchorEl(null);
+    handleExpanded(event, true);
+  };
+
+  const handleAddDir = (event) => {
+    event.stopPropagation();
+    dispatch(addDirAsync(groupId));
+    setAnchorEl(null);
+    handleExpanded(event, true);
   };
 
   const handleShowHidden = (event) => {
@@ -50,8 +57,7 @@ export default function GroupMenu(props) {
         aria-haspopup="true"
         aria-expanded={open ? "true" : undefined}
         onClick={handleClick}
-        sx={{ minWidth: "48px" }}
-      >
+        sx={{ minWidth: "48px" }}>
         <MenuIcon />
       </IconButton>
 
@@ -62,14 +68,19 @@ export default function GroupMenu(props) {
         onClose={handleClose}
         MenuListProps={{
           "aria-labelledby": "group-button",
-        }}
-      >
-        <MenuItem onClick={handleAddFiles}>Add Files</MenuItem>
-        <MenuItem onClick={handleClose}>Add Folder</MenuItem>
-        <MenuItem disabled={!hasHiddenFiles} onClick={handleShowHidden}>
+        }}>
+        <MenuItem dense disabled={isDir === true} onClick={handleAddFiles}>
+          Add Files
+        </MenuItem>
+        <MenuItem dense disabled={isDir !== null} onClick={handleAddDir}>
+          Add Folder
+        </MenuItem>
+        <MenuItem dense disabled={!hasHiddenFiles} onClick={handleShowHidden}>
           Show Removed
         </MenuItem>
-        <MenuItem onClick={handleClose}>Delete Group</MenuItem>
+        <MenuItem dense onClick={handleClose}>
+          Delete Group
+        </MenuItem>
       </Menu>
     </Box>
   );
