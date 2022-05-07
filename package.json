@@ -10,8 +10,10 @@
     "@mui/material": "^5.6.1",
     "@mui/styles": "^5.6.1",
     "@reduxjs/toolkit": "^1.8.1",
+    "@ronomon/opened": "^1.5.2",
     "array-move": "^4.0.0",
     "electron-is-dev": "^1.2.0",
+    "nexline": "^1.2.2",
     "react": "^18.0.0",
     "react-beautiful-dnd": "^13.1.0",
     "react-custom-scrollbars-2": "^4.4.0",
@@ -58,6 +60,7 @@
     "cross-env": "^7.0.2",
     "electron": "^18.0.4",
     "electron-builder": "^22.5.1",
+    "electron-rebuild": "^3.2.7",
     "nodemon": "^2.0.4",
     "wait-on": "^5.0.1"
   },
@@ -81,6 +84,7 @@
     "electron-dev": "concurrently \"cross-env BROWSER=none npm start\" \"wait-on http://localhost:3000 && electron . \"",
     "postinstall": "electron-builder install-app-deps",
     "preelectron-pack": "npm run build",
-    "electron-pack": "electron-builder -w portable"
+    "electron-pack": "electron-builder -w portable",
+    "rebuild": "electron-rebuild -f -w @ronomon/opened"
   }
 }

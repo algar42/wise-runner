@@ -11,7 +11,7 @@ export default function GroupMenu(props) {
   const [anchorEl, setAnchorEl] = React.useState(null);
   const open = Boolean(anchorEl);
   const dispatch = useDispatch();
-  const { groupId, handleExpanded } = props;
+  const { groupId, handleExpanded, handleRunGroup } = props;
   const { hasHiddenFiles, isDir, baseDir } = useSelector((state) =>
     state.job.value.groups.find((e) => e.id === groupId)
   );
@@ -42,6 +42,12 @@ export default function GroupMenu(props) {
   const handleShowHidden = (event) => {
     event.stopPropagation();
     dispatch(setGroupShowHidden({ groupId }));
+    setAnchorEl(null);
+  };
+
+  const handleRunGroupItem = (event) => {
+    event.stopPropagation();
+    handleRunGroup();
     setAnchorEl(null);
   };
 
@@ -77,6 +83,9 @@ export default function GroupMenu(props) {
         </MenuItem>
         <MenuItem dense disabled={!hasHiddenFiles} onClick={handleShowHidden}>
           Show Removed
+        </MenuItem>
+        <MenuItem dense onClick={handleRunGroupItem}>
+          Run Group
         </MenuItem>
         <MenuItem dense onClick={handleClose}>
           Delete Group

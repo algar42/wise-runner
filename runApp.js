@@ -15,7 +15,9 @@ class appRunner {
   runApp() {
     try {
       this.child = spawn(this.app, this.args, {
+        windowsVerbatimArguments: true,
         shell: false,
+        windowsHide: false,
       });
       this.pid = this.child.pid;
       this.child.on("error", (err) => {
@@ -23,7 +25,7 @@ class appRunner {
         console.log(err);
         this.callback({
           exitCode: this.exitCode,
-          fileId: this.fileId,
+          fileIds: [this.fileId],
           pid: this.pid,
           error: this.error,
         });
@@ -33,7 +35,7 @@ class appRunner {
 
         this.callback({
           exitCode,
-          fileId: this.fileId,
+          fileIds: [this.fileId],
           pid: this.pid,
           error: null,
         });
@@ -46,7 +48,7 @@ class appRunner {
 
   getState() {
     return {
-      fileId: this.fileId,
+      fileIds: [this.fileId],
       pid: this.pid,
       exitCode: this.exitCode,
       error: this.error,

@@ -10,6 +10,7 @@ export const jobSlice = createSlice({
       isRunable: false,
       isSaved: false,
       isRunning: false,
+      runParams: {},
       status: status.UNKNOWN,
       groups: [],
       files: [],
@@ -48,6 +49,25 @@ export const jobSlice = createSlice({
         if (action.payload.ids.length > 0) {
           state.value.groups[groupIndex].isDir = action.payload.isDir;
           state.value.groups[groupIndex].baseDir = action.payload.baseDir;
+        }
+        //assign log and lst paths
+        if (action.payload.files && action.payload.files.length > 0) {
+          try {
+            const pb = window.fileAPI.path.normalize(window.fileAPI.path.join(action.payload.files[0].file.dir, ".."));
+            if (pb) {
+              const log = window.fileAPI.path.join(pb, "log");
+              const lst = window.fileAPI.path.join(pb, "output");
+              if (window.fileAPI.fs.existsSync(log)) {
+                state.value.groups[groupIndex].settings.logOutputFolder = log;
+              } else state.value.groups[groupIndex].settings.logOutputFolder = action.payload.files[0].file.dir;
+              if (window.fileAPI.fs.existsSync(lst)) {
+                state.value.groups[groupIndex].settings.lstOutputFolder = lst;
+              } else state.value.groups[groupIndex].settings.lstOutputFolder = action.payload.files[0].file.dir;
+            }
+          } catch {
+            state.value.groups[groupIndex].settings.logOutputFolder = action.payload.files[0].file.dir;
+            state.value.groups[groupIndex].settings.lstOutputFolder = action.payload.files[0].file.dir;
+          }
         }
       },
       prepare(grpId, files, isDir) {
@@ -152,42 +172,107 @@ export const jobSlice = createSlice({
         };
       },
     },
-    runNextProgram: (state, action) => {
-      console.log(state.value.runningFiles.length);
-      console.log(action.payload);
-      if (state.value.runningFiles.length > 0) {
-        //const runningIndex = state.value.runningFiles.findIndex(
-        //  (file) => file.id === action.payload.fileId
-        //);
-        const fileIndex = state.value.files.findIndex((file) => file.id === action.payload.fileId);
-        state.value.files[fileIndex].isRunning = false;
-        state.value.files[fileIndex].exitCode = action.payload.exitCode;
-        state.value.files[fileIndex].runError = action.payload.error;
-        state.value.runningFiles = state.value.runningFiles.filter((el) => el.id !== action.payload.fileId);
-      }
+    logResults: (state, action) => {
+      const fileIndex = state.value.files.findIndex((file) => file.id === action.payload.fileId);
+      state.value.files[fileIndex].messages.numErrors = action.payload.e + action.payload.em + action.payload.eq;
+      state.value.files[fileIndex].messages.numWarnings = action.payload.w + action.payload.wm + action.payload.wq;
+      state.value.files[fileIndex].messages.numNotice = action.payload.n + action.payload.nm + action.payload.nq;
     },
-    runApp: (state, action) => {
-      if (action.payload && action.payload.fileId) {
-        const { sasCfgPath, sasExecPath, sasParams } = action.payload;
 
-        const fileIndex = state.value.files.findIndex((file) => file.id === action.payload.fileId);
+    runApp: (state, action) => {
+      //means that it is actioned by App Exit event
+      if (action.payload && action.payload.hasOwnProperty("exitCode")) {
+        //console.log(`Payload: ${JSON.stringify(action.payload)}`);
+        if (state.value.runningFiles.length > 0) {
+          const fileIndex = state.value.files.findIndex((file) => file.id === action.payload.fileIds[0]);
+          const groupIndex = state.value.groups.findIndex((group) => group.id === state.value.files[fileIndex].groupId);
+          state.value.files[fileIndex].isRunning = false;
+          state.value.files[fileIndex].exitCode = action.payload.exitCode;
+          state.value.files[fileIndex].runError = action.payload.error;
+          state.value.runningFiles = state.value.runningFiles.filter((el) => el.id !== action.payload.fileIds[0]);
+
+          //run logChecker
+          const path =
+            state.value.groups[groupIndex].settings.logOutputFolder +
+            "\\" +
+            state.value.files[fileIndex].file.name +
+            ".log";
+          //console.log(path);
+          window.fileAPI.logCheck({ fileId: action.payload.fileIds[0], path: path }).then((res) => console.log(res));
+
+          if (state.value.filesToRun.length > 0) {
+            //run next program
+            const fileIndex = state.value.files.findIndex((file) => file.id === state.value.filesToRun[0]);
+            const groupIndex = state.value.groups.findIndex(
+              (group) => group.id === state.value.files[fileIndex].groupId
+            );
+            state.value.runningFiles.push(state.value.files[fileIndex]);
+            state.value.filesToRun.shift();
+
+            const run = window.fileAPI.runApp({
+              fileId: state.value.files[fileIndex].id,
+              app: [
+                state.value.runParams.sasExecPath,
+                "-sysin",
+                '"' +
+                  window.fileAPI.path.join(
+                    state.value.files[fileIndex].file.dir,
+                    state.value.files[fileIndex].file.base
+                  ) +
+                  '"',
+                "-CONFIG",
+                '"' + state.value.runParams.sasCfgPath + '"',
+                "-Print",
+                '"' + state.value.groups[groupIndex].settings.lstOutputFolder + '"',
+                "-Log",
+                '"' + state.value.groups[groupIndex].settings.logOutputFolder + '"',
+                state.value.runParams.sasParams,
+                state.value.runParams.sasParams1,
+              ],
+            });
+
+            //console.log(run);
+
+            if (!run.error) {
+              state.value.files[fileIndex].isRunning = true;
+            } else {
+              state.value.files[fileIndex].runError = run.error;
+              state.value.runningFiles.shift();
+            }
+          }
+        }
+      } else if (action.payload && action.payload.fileIds && action.payload.fileIds.length > 0) {
+        //means we called this to initiate batch run
+        const { fileIds, sasCfgPath, sasExecPath, sasParams, sasParams1 } = action.payload;
+        state.value.runParams = { sasCfgPath, sasExecPath, sasParams, sasParams1 };
+        state.value.filesToRun = [...fileIds];
+        //console.log(`files to run: ${JSON.stringify(state.value.filesToRun)}`);
+        const fileIndex = state.value.files.findIndex((file) => file.id === state.value.filesToRun[0]);
+        const groupIndex = state.value.groups.findIndex((group) => group.id === state.value.files[fileIndex].groupId);
         state.value.runningFiles.push(state.value.files[fileIndex]);
+        console.log(`Running file: ${JSON.stringify(state.value.runningFiles)}`);
+        state.value.filesToRun.shift();
+
         const run = window.fileAPI.runApp({
-          fileId: action.payload.fileId,
+          fileId: state.value.files[fileIndex].id,
           app: [
-            sasExecPath,
+            state.value.runParams.sasExecPath,
             "-sysin",
-            window.fileAPI.path.join(state.value.files[fileIndex].file.dir, state.value.files[fileIndex].file.base),
+            '"' +
+              window.fileAPI.path.join(state.value.files[fileIndex].file.dir, state.value.files[fileIndex].file.base) +
+              '"',
             "-CONFIG",
-            sasCfgPath,
-            "-NOSPLASH",
-            "-NOLOGO",
-            "-rsasuser",
+            '"' + state.value.runParams.sasCfgPath + '"',
+            "-Print",
+            '"' + state.value.groups[groupIndex].settings.lstOutputFolder + '"',
+            "-Log",
+            '"' + state.value.groups[groupIndex].settings.logOutputFolder + '"',
+            state.value.runParams.sasParams,
+            state.value.runParams.sasParams1,
           ],
         });
 
         if (!run.error) {
-          state.value.runningFiles[0].isRunning = true;
           state.value.files[fileIndex].isRunning = true;
         } else {
           state.value.files[fileIndex].runError = run.error;
@@ -210,7 +295,7 @@ export const {
   fileHide,
   setGroupShowHidden,
   runApp,
-  runNextProgram,
+  logResults,
 } = jobSlice.actions;
 
 export const addFilesAsync = (groupId, baseDir) => async (dispatch) => {

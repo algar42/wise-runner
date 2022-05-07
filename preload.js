@@ -7,8 +7,11 @@ contextBridge.exposeInMainWorld("fileAPI", {
   openDir: () => ipcRenderer.invoke("openDir"),
   getInit: () => ipcRenderer.invoke("getInit"),
   runApp: (args) => ipcRenderer.invoke("runApp", args),
+  logCheck: (args) => ipcRenderer.invoke("logCheck", args),
   handleAppFinish: (callback) => ipcRenderer.on("runAppExit", callback),
+  logCheckResult: (callback) => ipcRenderer.on("logCheckResult", callback),
   getDb: (dbname, key) => ipcRenderer.invoke("getDb", dbname, key),
+  initDb: (path, name, defaults) => ipcRenderer.invoke("initDb", path, name, defaults),
   path: path,
   fs: fs,
 });

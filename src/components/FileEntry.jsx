@@ -26,10 +26,9 @@ const FileEntry = (props) => {
 
   const groupEnabled = useSelector((state) => state.job.value.groups.find((e) => e.id === groupId).isEnabled);
 
-  const { sasExecPath, sasCfgPath, sasParams, multiThreading } = useSelector(
+  const { sasExecPath, sasCfgPath, sasParams, sasParams1, multiThreading } = useSelector(
     (state) => state.application.value.settings
   );
-  console.log(sasExecPath);
 
   const dispatch = useDispatch();
 
@@ -72,7 +71,7 @@ const FileEntry = (props) => {
   const handleContextMenuAppRun = () => {
     setContextMenu(null);
     //console.log(SasExecPath);
-    dispatch(runApp({ fileId, sasExecPath, sasCfgPath, sasParams }));
+    dispatch(runApp({ fileIds: [fileId], sasExecPath, sasCfgPath, sasParams, sasParams1 }));
   };
 
   const handleContextMenu = (event) => {
@@ -92,6 +91,21 @@ const FileEntry = (props) => {
     console.log(enabled);
     dispatch(fileEnabled({ fileId, enabled }));
     enabled && dispatch(fileHide({ fileId, hide: false }));
+  };
+
+  const exitCodeColor = (code) => {
+    switch (code) {
+      case null:
+        return "success";
+      case 0:
+        return "success";
+      case 1:
+        return "warning";
+      case 2:
+        return "error";
+      default:
+        return "error";
+    }
   };
 
   const DragHandle = () => (
@@ -189,18 +203,14 @@ const FileEntry = (props) => {
           </Typography>
         </Box>
 
-        <BadgeNotifier count={5} disabled={!file.isEnabled || !groupEnabled} icon="error" />
+        <BadgeNotifier count={file.messages.numErrors} disabled={!file.isEnabled || !groupEnabled} icon="error" />
+        <BadgeNotifier count={file.messages.numWarnings} disabled={!file.isEnabled || !groupEnabled} icon="warning" />
+        <BadgeNotifier count={file.messages.numNotice} disabled={!file.isEnabled || !groupEnabled} icon="info" />
         <BadgeNotifier
-          count={Math.floor(Math.random() * 100)}
+          count={file.exitCode !== null || file.runError !== null ? -1 : 0}
           disabled={!file.isEnabled || !groupEnabled}
-          icon="warning"
+          icon={file.runError !== null ? "error" : exitCodeColor(file.exitCode)}
         />
-        <BadgeNotifier
-          count={Math.floor(Math.random() * 100)}
-          disabled={!file.isEnabled || !groupEnabled}
-          icon="info"
-        />
-        <BadgeNotifier count={0} disabled={!file.isEnabled || !groupEnabled} icon="success" />
       </AccordionSummary>
       <AccordionDetails sx={{ borderTop: "1px solid rgba(0, 0, 0, .125)" }}>{JSON.stringify(file)}</AccordionDetails>
       <FileContextMenu

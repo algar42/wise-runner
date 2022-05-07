@@ -2,8 +2,12 @@ import React from "react";
 import { useEffect } from "react";
 import "./App.css";
 import { useSelector, useDispatch } from "react-redux";
-import { appInitAsync, globalSettingsInitAsync } from "./features/application/applicationSlice";
-import { groupInit, runNextProgram } from "./features/job/jobSlice";
+import {
+  appInitAsync,
+  globalSettingsInitAsync,
+  locallSettingsInitAsync,
+} from "./features/application/applicationSlice";
+import { groupInit, runApp, logResults } from "./features/job/jobSlice";
 import { Grid, Container } from "@mui/material";
 import WiseAppBar from "./components/WiseAppBar";
 import JobGroup from "./components/JobGroup";
@@ -13,14 +17,21 @@ function App() {
   //const workdir = useSelector((state) => state.application.value.workPath);
   //const job = useSelector((state) => state.job.value);
   const dispatch = useDispatch();
+  const metadataPath = useSelector((state) => state.application.value.metadataPath);
 
   useEffect(() => {
     dispatch(appInitAsync());
     dispatch(globalSettingsInitAsync());
     dispatch(groupInit());
-    window.fileAPI.handleAppFinish((event, args) => dispatch(runNextProgram(args)));
+    window.fileAPI.handleAppFinish((event, args) => dispatch(runApp(args)));
+    window.fileAPI.logCheckResult((event, args) => dispatch(logResults(args)));
     //console.log(workdir);
   }, []);
+
+  useEffect(() => {
+    //console.log(metadataPath);
+    metadataPath && dispatch(locallSettingsInitAsync(metadataPath));
+  }, [metadataPath]);
 
   return (
     <Grid container spacing={1} sx={{ backgroundColor: "#fafafa" }}>

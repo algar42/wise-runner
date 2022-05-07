@@ -9,8 +9,12 @@ const BrowserWindow = electron.BrowserWindow;
 const basepath = app.getPath("documents");
 const appRunner = require("./runApp");
 const { readdir } = require("fs/promises");
+//const fOpened = require("@ronomon/opened");
+const logChecker = require("./logCheck");
 
 let sasProces = [];
+
+let sasLog = [];
 
 const initfolders = initFolders(args, basepath);
 
@@ -20,11 +24,6 @@ const databases = {};
 
 async function getInit() {
   return initfolders;
-}
-
-async function initDatabase(path, name, defaults) {
-  initDb(databases, path, name, defaults);
-  return databases[name].db.get("db").value();
 }
 
 async function handleFileOpen(baseDir) {
@@ -63,17 +62,23 @@ async function handleDirOpen() {
 
 app.whenReady().then(() => {
   initGlobalSettings(initfolders, databases);
+
+  //databases.globCfgDb.db.save();
   if (databases.globCfgDb) {
     //console.log(databases.globCfgDb.db.get("global").value());
   }
   ipcMain.handle("openFile", (event, dir) => handleFileOpen(dir));
+
   ipcMain.handle("openDir", handleDirOpen);
   ipcMain.handle("getInit", getInit);
   ipcMain.handle("getDb", async (event, dbname, key) => {
     return databases[dbname].db.get(key).value();
   });
   ipcMain.handle("initDb", async (event, path, name, defaults) => {
+    console.log(path);
+    //console.log(name);
     initDb(databases, path, name, defaults);
+    //return null;
     return databases[name].db.get("db").value();
   });
   ipcMain.handle("saveDb", async (event, dbname, data) => {
@@ -92,6 +97,20 @@ app.whenReady().then(() => {
       return res;
     } else {
       sasProces.push({ pid: res.pid, proc: appr });
+      return res;
+    }
+  });
+  ipcMain.handle("logCheck", (event, args) => {
+    let log = new logChecker(args.fileId, args.path, (args) => {
+      mainWindow.webContents.send("logCheckResult", args);
+      sasLog = sasLog.filter((el) => el.pid !== args.pid);
+    });
+    let res = log.getState();
+    if (res.error) {
+      log = null;
+      return res;
+    } else {
+      sasLog.push({ fileId: args.fileId, proc: log });
       return res;
     }
   });
@@ -120,9 +139,9 @@ const createWindow = () => {
     mainWindow.loadFile("build/index.html");
   }
 
-  if (isDev) {
-    mainWindow.webContents.openDevTools();
-  }
+  //if (isDev) {
+  mainWindow.webContents.openDevTools();
+  //}
 
   mainWindow.on("closed", () => (mainWindow = null));
 };

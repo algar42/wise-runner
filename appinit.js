@@ -3,11 +3,16 @@ const fs = require("fs");
 const database = require("./stormdb");
 
 const globalDefaults = {
-  global: {
-    sasExecPath: "E:\\Program Files\\SASHome\\SASFoundation\\9.4\\sas.exe",
-    sasCfgPath:
-      "E:\\Program Files\\SASHome\\SASFoundation\\9.4\\nls\\en\\sasv9.cfg",
-    sasParams: "-rsasuser -nosplash -nologo lrecl = 4000",
+  db: {
+    settings: {
+      sasExecPath: "E:\\Program Files\\SASHome\\SASFoundation\\9.4\\sas.exe",
+      sasCfgPath: "E:\\Program Files\\SASHome\\SASFoundation\\9.4\\nls\\en\\sasv9.cfg",
+      sasParams: "-rsasuser -nosplash -nologo lrecl = 4000",
+      sasParams1: "",
+      multiThreading: false,
+      numberOfThreads: 2,
+      runSasHidden: true,
+    },
   },
 };
 
@@ -28,18 +33,14 @@ function initFolders(args, basePath) {
 
 function initGlobalSettings(init, dbobj) {
   if (init.globalConfigPath && fs.existsSync(init.globalConfigPath)) {
-    dbobj.globCfgDb = new database(
-      init.globalConfigPath,
-      "wiseglobalsettings.sdb",
-      globalDefaults
-    );
+    dbobj.globCfgDb = new database(init.globalConfigPath, "wiseglobalsettings.sdb", globalDefaults);
   }
 }
 
 function initDb(dbobj, path, name, defaults) {
   const def = { db: defaults };
   if (path && name && fs.existsSync(path)) {
-    dbobj.name = new database(path, name, def);
+    dbobj[name] = new database(path, name + ".sdb", def);
   }
 }
 

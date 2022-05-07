@@ -10,7 +10,7 @@ import { Box, Checkbox } from "@mui/material";
 import { css, jsx } from "@emotion/react";
 import { useState } from "react";
 import EditGroupTitle from "./EditGroupTitle";
-import { groupTitleEdited, groupEnabled, dragFileMove } from "../features/job/jobSlice";
+import { groupTitleEdited, groupEnabled, dragFileMove, runApp } from "../features/job/jobSlice";
 //import FileEntry from "./FileEntry";
 import { MemoFileEntry } from "./FileEntry";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
@@ -35,6 +35,9 @@ const GroupEntry = (props) => {
   };
 
   const group = useSelector((state) => state.job.value.groups.find((e) => e.id === groupId), shallowEqual);
+  const { sasExecPath, sasCfgPath, sasParams, sasParams1, multiThreading } = useSelector(
+    (state) => state.application.value.settings
+  );
 
   const handleGroupDialogOpen = (event) => {
     event.stopPropagation();
@@ -46,11 +49,9 @@ const GroupEntry = (props) => {
     }
   };
 
-  const getListStyle = (isDraggingOver) => ({});
-
-  const getItemStyle = (isDragging, draggableStyle) => ({
-    ...draggableStyle,
-  });
+  const handleRunGroup = () => {
+    dispatch(runApp({ fileIds: group.files, sasExecPath, sasCfgPath, sasParams, sasParams1 }));
+  };
 
   const handleFileDragEnd = (result) => {
     if (!result.destination) return;
@@ -146,7 +147,7 @@ const GroupEntry = (props) => {
             />
           </Box>
 
-          <GroupMenu groupId={groupId} handleExpanded={handleGroupExpanded} />
+          <GroupMenu groupId={groupId} handleExpanded={handleGroupExpanded} handleRunGroup={handleRunGroup} />
         </AccordionSummary>
         <DragDropContext onDragEnd={handleFileDragEnd}>
           <AccordionDetails sx={{ borderTop: "1px solid rgba(0, 0, 0, .125)" }}>
