@@ -35,9 +35,10 @@ const GroupEntry = (props) => {
   };
 
   const group = useSelector((state) => state.job.value.groups.find((e) => e.id === groupId), shallowEqual);
-  const { sasExecPath, sasCfgPath, sasParams, sasParams1, multiThreading } = useSelector(
+  const { sasExecPath, sasCfgPath, sasParams, sasParams1, runSasHidden } = useSelector(
     (state) => state.application.value.settings
   );
+  const files = useSelector((state) => state.job.value.files.filter((e) => e.groupId === groupId));
 
   const handleGroupDialogOpen = (event) => {
     event.stopPropagation();
@@ -50,7 +51,17 @@ const GroupEntry = (props) => {
   };
 
   const handleRunGroup = () => {
-    dispatch(runApp({ fileIds: group.files, sasExecPath, sasCfgPath, sasParams, sasParams1 }));
+    if (group.files.length > 0)
+      dispatch(
+        runApp({
+          fileIds: group.files.filter((e) => files.find((f) => f.id === e && f.isEnabled)),
+          sasExecPath,
+          sasCfgPath,
+          sasParams,
+          sasParams1,
+          runSasHidden,
+        })
+      );
   };
 
   const handleFileDragEnd = (result) => {
@@ -154,15 +165,19 @@ const GroupEntry = (props) => {
             <Droppable droppableId="droppable-file">
               {(provided, snapshot) => (
                 <div {...provided.droppableProps} ref={provided.innerRef}>
-                  {group.files.map((v, i) => (
-                    <Draggable draggableId={v} key={v} index={i} isDragDisabled={!group.isEnabled}>
-                      {(provided, snapshot) => (
-                        <div ref={provided.innerRef} {...provided.draggableProps}>
-                          <MemoFileEntry key={v} fileId={v} groupId={groupId} handle={provided.dragHandleProps} />
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
+                  {group.files.map((v, i) =>
+                    files.find((e) => e.id === v).isHidden && group.isShowHidden === false ? (
+                      <div key={v} />
+                    ) : (
+                      <Draggable draggableId={v} key={v} index={i} isDragDisabled={!group.isEnabled}>
+                        {(provided, snapshot) => (
+                          <div ref={provided.innerRef} {...provided.draggableProps}>
+                            <MemoFileEntry key={v} fileId={v} groupId={groupId} handle={provided.dragHandleProps} />
+                          </div>
+                        )}
+                      </Draggable>
+                    )
+                  )}
                   {provided.placeholder}
                 </div>
               )}

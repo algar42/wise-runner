@@ -1,8 +1,9 @@
 const { spawn } = require("child_process");
 
 class appRunner {
-  constructor(fileId, args, callback) {
+  constructor(fileId, runHidden, args, callback) {
     this.fileId = fileId;
+    this.runHidden = runHidden;
     this.child = null;
     this.pid = null;
     this.exitCode = null;
@@ -13,11 +14,12 @@ class appRunner {
     this.runApp();
   }
   runApp() {
+    console.log("isHidden: " + this.runHidden);
     try {
       this.child = spawn(this.app, this.args, {
         windowsVerbatimArguments: true,
         shell: false,
-        windowsHide: false,
+        windowsHide: this.runHidden,
       });
       this.pid = this.child.pid;
       this.child.on("error", (err) => {

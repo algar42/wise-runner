@@ -86,7 +86,7 @@ app.whenReady().then(() => {
     return databases[dbname].db.get("db").value();
   });
   ipcMain.handle("runApp", (event, args) => {
-    let appr = new appRunner(args.fileId, args.app, (args) => {
+    let appr = new appRunner(args.fileId, args.runHidden, args.app, (args) => {
       mainWindow.webContents.send("runAppExit", args);
       sasProces = sasProces.filter((el) => el.pid !== args.pid);
       //console.log(sasProces);

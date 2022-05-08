@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld("fileAPI", {
   handleAppFinish: (callback) => ipcRenderer.on("runAppExit", callback),
   logCheckResult: (callback) => ipcRenderer.on("logCheckResult", callback),
   getDb: (dbname, key) => ipcRenderer.invoke("getDb", dbname, key),
+  saveDb: (dbname, data) => ipcRenderer.invoke("saveDb", dbname, data),
   initDb: (path, name, defaults) => ipcRenderer.invoke("initDb", path, name, defaults),
   path: path,
   fs: fs,

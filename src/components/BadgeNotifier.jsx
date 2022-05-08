@@ -10,31 +10,30 @@ import { fileEnabled } from "../features/job/jobSlice";
 function notificationsLabel(count) {
   if (count === 0) {
     return "no notifications";
-  }
-  if (count > 99) {
-    return "more than 99 notifications";
+  } else if (count > 99) {
+    return "more than 99 notificationicon";
   }
   return `${count} notifications`;
 }
 
 export default function BadgeNotifier(props) {
   const { count, icon, disabled } = props;
-  const incoActiveStyle = { fontSize: "16px" };
+  const iconActiveStyle = { fontSize: "16px" };
   const iconInactiveStyle = { fontSize: "16px", color: "rgba(0, 0, 0, 0.3)" };
   const cnt = disabled ? 0 : count;
 
   const SelectedIcon = () => {
     switch (icon) {
       case "error":
-        return <DangerousOutlinedIcon color={icon} sx={cnt ? incoActiveStyle : iconInactiveStyle} />;
+        return <DangerousOutlinedIcon color={icon} sx={cnt ? iconActiveStyle : iconInactiveStyle} />;
       case "warning":
-        return <WarningAmberOutlinedIcon color={icon} sx={cnt ? incoActiveStyle : iconInactiveStyle} />;
+        return <WarningAmberOutlinedIcon color={icon} sx={cnt ? iconActiveStyle : iconInactiveStyle} />;
 
       case "info":
-        return <ErrorOutlineOutlinedIcon color={icon} sx={cnt ? incoActiveStyle : iconInactiveStyle} />;
+        return <ErrorOutlineOutlinedIcon color={icon} sx={cnt ? iconActiveStyle : iconInactiveStyle} />;
 
       case "success":
-        return <CheckCircleOutlineOutlinedIcon color={icon} sx={cnt ? incoActiveStyle : iconInactiveStyle} />;
+        return <CheckCircleOutlineOutlinedIcon color={icon} sx={cnt ? iconActiveStyle : iconInactiveStyle} />;
       default:
         break;
     }

@@ -12,7 +12,7 @@ export default function GroupMenu(props) {
   const open = Boolean(anchorEl);
   const dispatch = useDispatch();
   const { groupId, handleExpanded, handleRunGroup } = props;
-  const { hasHiddenFiles, isDir, baseDir } = useSelector((state) =>
+  const { hasHiddenFiles, isDir, baseDir, isShowHidden } = useSelector((state) =>
     state.job.value.groups.find((e) => e.id === groupId)
   );
 
@@ -82,7 +82,7 @@ export default function GroupMenu(props) {
           Add Folder
         </MenuItem>
         <MenuItem dense disabled={!hasHiddenFiles} onClick={handleShowHidden}>
-          Show Removed
+          {isShowHidden ? "Hide Removed" : "Show Removed"}
         </MenuItem>
         <MenuItem dense onClick={handleRunGroupItem}>
           Run Group

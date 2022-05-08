@@ -26,7 +26,7 @@ const FileEntry = (props) => {
 
   const groupEnabled = useSelector((state) => state.job.value.groups.find((e) => e.id === groupId).isEnabled);
 
-  const { sasExecPath, sasCfgPath, sasParams, sasParams1, multiThreading } = useSelector(
+  const { sasExecPath, sasCfgPath, sasParams, sasParams1, multiThreading, runSasHidden } = useSelector(
     (state) => state.application.value.settings
   );
 
@@ -71,7 +71,7 @@ const FileEntry = (props) => {
   const handleContextMenuAppRun = () => {
     setContextMenu(null);
     //console.log(SasExecPath);
-    dispatch(runApp({ fileIds: [fileId], sasExecPath, sasCfgPath, sasParams, sasParams1 }));
+    dispatch(runApp({ fileIds: [fileId], sasExecPath, sasCfgPath, sasParams, sasParams1, runSasHidden }));
   };
 
   const handleContextMenu = (event) => {

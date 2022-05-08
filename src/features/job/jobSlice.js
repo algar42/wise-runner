@@ -49,6 +49,7 @@ export const jobSlice = createSlice({
         if (action.payload.ids.length > 0) {
           state.value.groups[groupIndex].isDir = action.payload.isDir;
           state.value.groups[groupIndex].baseDir = action.payload.baseDir;
+          state.value.isRunable = true;
         }
         //assign log and lst paths
         if (action.payload.files && action.payload.files.length > 0) {
@@ -120,6 +121,12 @@ export const jobSlice = createSlice({
       //handle Enabling/disabling Group
       const groupIndex = state.value.groups.findIndex((group) => group.id === action.payload.groupId);
       state.value.groups[groupIndex].isEnabled = action.payload.enabled;
+      let allDisabled = state.value.groups.filter((e) => e.isEnabled === true);
+      if (allDisabled.length === 0) {
+        state.value.isRunable = false;
+      } else if (state.value.groups[groupIndex].files.length > 0 && action.payload.enabled) {
+        state.value.isRunable = true;
+      }
     },
     groupTitleEdited: (state, action) => {
       //handle Group title update
@@ -211,6 +218,7 @@ export const jobSlice = createSlice({
 
             const run = window.fileAPI.runApp({
               fileId: state.value.files[fileIndex].id,
+              runHidden: state.value.runParams.runSasHidden,
               app: [
                 state.value.runParams.sasExecPath,
                 "-sysin",
@@ -241,20 +249,34 @@ export const jobSlice = createSlice({
             }
           }
         }
-      } else if (action.payload && action.payload.fileIds && action.payload.fileIds.length > 0) {
+      } else if (action.payload && action.payload.fileIds && action.payload.fileIds.length >= 0) {
         //means we called this to initiate batch run
-        const { fileIds, sasCfgPath, sasExecPath, sasParams, sasParams1 } = action.payload;
-        state.value.runParams = { sasCfgPath, sasExecPath, sasParams, sasParams1 };
-        state.value.filesToRun = [...fileIds];
+        const { fileIds, sasCfgPath, sasExecPath, sasParams, sasParams1, runSasHidden } = action.payload;
+        if (fileIds.length === 0) {
+          //empty array means we want to run the whole job
+          for (let i = 0; i < state.value.groups.length; i++) {
+            if (state.value.groups[i].isEnabled) {
+              //let enabledFiles = state.value.files.filter((e) => e.isEnabled === true);
+              let files = state.value.groups[i].files.filter((e) =>
+                state.value.files.find((f) => f.id === e && f.isEnabled === true)
+              );
+              state.value.filesToRun = [...state.value.filesToRun, ...files];
+            }
+          }
+        } else state.value.filesToRun = [...fileIds];
+        if (state.value.filesToRun.length === 0) return;
+        state.value.runParams = { sasCfgPath, sasExecPath, sasParams, sasParams1, runSasHidden };
+
         //console.log(`files to run: ${JSON.stringify(state.value.filesToRun)}`);
         const fileIndex = state.value.files.findIndex((file) => file.id === state.value.filesToRun[0]);
         const groupIndex = state.value.groups.findIndex((group) => group.id === state.value.files[fileIndex].groupId);
         state.value.runningFiles.push(state.value.files[fileIndex]);
-        console.log(`Running file: ${JSON.stringify(state.value.runningFiles)}`);
+        //console.log(`Running file: ${JSON.stringify(state.value.runningFiles)}`);
         state.value.filesToRun.shift();
-
+        //console.log("Hidden: " + JSON.stringify(state.value.runParams.runSasHidden));
         const run = window.fileAPI.runApp({
           fileId: state.value.files[fileIndex].id,
+          runHidden: state.value.runParams.runSasHidden,
           app: [
             state.value.runParams.sasExecPath,
             "-sysin",
