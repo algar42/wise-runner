@@ -47,17 +47,17 @@ const FileEntry = (props) => {
 
   useEffect(() => {
     let interval = null;
-
-    if (file.isRunning) {
+    let status = file.isLogChecking || file.isRunning;
+    if (status) {
       interval = setInterval(() => {
         setElapsedTime((elapsedTime) => elapsedTime + 1);
       }, 1000);
-    } else if (!file.isRunning) {
+    } else if (!status) {
       clearInterval(interval);
       setElapsedTime(0);
     }
     return () => clearInterval(interval);
-  }, [file.isRunning, elapsedTime]);
+  }, [file.isRunning, file.isLogChecking, elapsedTime]);
 
   const handleContextMenuClose = () => {
     setContextMenu(null);
@@ -88,7 +88,7 @@ const FileEntry = (props) => {
 
   const handleFileEnabled = (event) => {
     const enabled = event.target.checked;
-    console.log(enabled);
+    //console.log(enabled);
     dispatch(fileEnabled({ fileId, enabled }));
     enabled && dispatch(fileHide({ fileId, hide: false }));
   };
@@ -199,7 +199,8 @@ const FileEntry = (props) => {
               (!file.isEnabled || !groupEnabled ? { color: "#aaaaaa" } : {},
               file.isHidden ? { fontStyle: "italic", color: "#777777" } : {})
             }>
-            {file.file.name.toUpperCase()} {file.isRunning && `[${convertSeconds(elapsedTime)}]`}
+            {file.file.name.toUpperCase()}{" "}
+            {(file.isRunning || file.isLogChecking) && `[${convertSeconds(elapsedTime)}]`}
           </Typography>
         </Box>
 

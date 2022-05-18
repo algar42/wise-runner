@@ -26,6 +26,12 @@ async function getInit() {
   return initfolders;
 }
 
+function showMessage(options) {
+  const response = dialog.showMessageBoxSync(null, options);
+
+  return response;
+}
+
 async function handleFileOpen(baseDir) {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     defaultPath: baseDir || initfolders.workPath,
@@ -60,6 +66,45 @@ async function handleDirOpen() {
   }
 }
 
+const checkLog = (args) => {
+  let log = new logChecker(args.fileId, args.path, (args) => {
+    mainWindow.webContents.send("logCheckResult", args);
+    sasLog = sasLog.filter((el) => el.fileId !== args.fileId);
+  });
+  /*
+  let res = log.getState();
+  if (res.error) {
+    log = null;
+    return res;
+  } else {
+    sasLog.push({ fileId: args.fileId, proc: log });
+    return res;
+  }*/
+  sasLog.push({ fileId: args.fileId, proc: log });
+  log.checkLog();
+  //console.log(sasLog);
+};
+
+const appRun = (args) => {
+  let appr = new appRunner(args.fileId, args.runHidden, args.app, (args) => {
+    mainWindow.webContents.send("runAppExit", args);
+    sasProces = sasProces.filter((el) => el.pid !== args.fileIds[0]);
+    //console.log(sasProces);
+  });
+  /*
+  let res = appr.getState();
+  if (res.error) {
+    appr = null;
+    return res;
+  } else {
+    sasProces.push({ pid: res.pid, proc: appr });
+    //console.log(sasProces);
+    return res;
+  }
+  */
+  sasProces.push({ fileId: args.fileId, proc: appr });
+};
+
 app.whenReady().then(() => {
   initGlobalSettings(initfolders, databases);
 
@@ -68,7 +113,11 @@ app.whenReady().then(() => {
     //console.log(databases.globCfgDb.db.get("global").value());
   }
   ipcMain.handle("openFile", (event, dir) => handleFileOpen(dir));
-
+  ipcMain.on("showMessage", (event, options) => {
+    const res = showMessage(options);
+    console.log(res);
+    event.returnValue = res;
+  });
   ipcMain.handle("openDir", handleDirOpen);
   ipcMain.handle("getInit", getInit);
   ipcMain.handle("getDb", async (event, dbname, key) => {
@@ -85,34 +134,11 @@ app.whenReady().then(() => {
     databases[dbname].db.get("db").set(data).save();
     return databases[dbname].db.get("db").value();
   });
-  ipcMain.handle("runApp", (event, args) => {
-    let appr = new appRunner(args.fileId, args.runHidden, args.app, (args) => {
-      mainWindow.webContents.send("runAppExit", args);
-      sasProces = sasProces.filter((el) => el.pid !== args.pid);
-      //console.log(sasProces);
-    });
-    let res = appr.getState();
-    if (res.error) {
-      appr = null;
-      return res;
-    } else {
-      sasProces.push({ pid: res.pid, proc: appr });
-      return res;
-    }
+  ipcMain.on("runApp", (event, args) => {
+    appRun(args);
   });
-  ipcMain.handle("logCheck", (event, args) => {
-    let log = new logChecker(args.fileId, args.path, (args) => {
-      mainWindow.webContents.send("logCheckResult", args);
-      sasLog = sasLog.filter((el) => el.pid !== args.pid);
-    });
-    let res = log.getState();
-    if (res.error) {
-      log = null;
-      return res;
-    } else {
-      sasLog.push({ fileId: args.fileId, proc: log });
-      return res;
-    }
+  ipcMain.on("logCheck", (event, args) => {
+    checkLog(args);
   });
 });
 

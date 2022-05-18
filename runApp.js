@@ -14,7 +14,7 @@ class appRunner {
     this.runApp();
   }
   runApp() {
-    console.log("isHidden: " + this.runHidden);
+    //console.log("isHidden: " + this.runHidden);
     try {
       this.child = spawn(this.app, this.args, {
         windowsVerbatimArguments: true,
@@ -24,7 +24,7 @@ class appRunner {
       this.pid = this.child.pid;
       this.child.on("error", (err) => {
         this.error = err.errno;
-        console.log(err);
+        //console.log(err);
         this.callback({
           exitCode: this.exitCode,
           fileIds: [this.fileId],
@@ -43,8 +43,14 @@ class appRunner {
         });
       });
     } catch (error) {
-      console.log("Error", error);
+      //console.log("Error", error);
       this.error = error;
+      this.callback({
+        exitCode: null,
+        fileIds: [this.fileId],
+        pid: null,
+        error: this.error,
+      });
     }
   }
 

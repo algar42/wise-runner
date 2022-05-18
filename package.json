@@ -13,6 +13,7 @@
     "@ronomon/opened": "^1.5.2",
     "array-move": "^4.0.0",
     "electron-is-dev": "^1.2.0",
+    "event-stream": "^4.0.1",
     "nexline": "^1.2.2",
     "react": "^18.0.0",
     "react-beautiful-dnd": "^13.1.0",

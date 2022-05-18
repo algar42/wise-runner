@@ -2,11 +2,138 @@ import { createSlice, nanoid } from "@reduxjs/toolkit";
 import { status } from "../../app/constants";
 import { arrayMoveImmutable } from "array-move";
 
+const getPriorityGroup = (name) => {
+  const nm = name.toUpperCase();
+  //SDTM groups
+  if (/_TDD$/.test(nm)) return 5;
+  else if (/_DC$/.test(nm)) return 7;
+  else if (/_DM$/.test(nm)) return 10;
+  else if (/_SE$/.test(nm)) return 15;
+  else if (/_SV$/.test(nm)) return 20;
+  else if (/_CO$/.test(nm)) return 90;
+  else if (/_RELREC$/.test(nm)) return 95;
+  else if (/_FINAL$/.test(nm)) return 97;
+  else if (/_TEMPLATE$/.test(nm)) return 99;
+  //ADaM groups
+  else if (/_ADDM$/.test(nm)) return 5;
+  else if (/_ADSL$/.test(nm)) return 10;
+  else return 50;
+};
+
+const fileSortByPriority = (ids, files) => {
+  const sIds = [...ids];
+  sIds.sort((p, c) => {
+    const pf = files.find((e) => e.id === p);
+    const cf = files.find((e) => e.id === c);
+    // console.log(`${pf.file.name}, ${cf.file.name}, ${pf.priorityGroup - cf.priorityGroup}`);
+    return pf.priorityGroup - cf.priorityGroup;
+  });
+  return sIds;
+};
+
+const fileSortByName = (ids, files) => {
+  const sIds = [...ids];
+  sIds.sort((p, c) => {
+    const pf = files.find((e) => e.id === p);
+    const cf = files.find((e) => e.id === c);
+    if (pf.priorityGroup === cf.priorityGroup) return pf.file.name.localeCompare(cf.file.name);
+    else return 0;
+  });
+  return sIds;
+};
+
+const fileStats = (path) => {
+  const stat = window.fileAPI.fs.statSync(path, { throwIfNoEntry: false });
+  //console.log(path);
+  //console.log(stat);
+  if (stat)
+    return {
+      fileExist: true,
+      atime: stat.atime.getTime(),
+      mtime: stat.mtime.getTime(),
+      ctime: stat.ctime.getTime(),
+      birthtime: stat.birthtime.getTime(),
+      maxtime: Math.max(stat.atime, stat.mtime, stat.ctime),
+    };
+  else return { fileExist: false, atime: null, mtime: null, ctime: null, birthtime: null, maxtime: null };
+};
+
+const logFile = (path, name) => {
+  return { logPath: path + "\\" + name + ".log" };
+};
+
+const handleSaveJob = (path, name, job) => {
+  const jb = JSON.stringify(job);
+  //console.log(jb);
+  window.fileAPI.initDb(path, name, { value: {} }).then((res) => {
+    if (res) {
+      window.fileAPI.saveDb(name, { value: JSON.parse(jb) }).then((res) => {
+        if (res) console.log("DB Saved");
+      });
+    }
+  });
+};
+
+const prepareFiles = (grpId, files, isDir) => {
+  const pl = {
+    payload: {
+      groupId: grpId,
+      isDir: isDir,
+      baseDir: null,
+      files: [],
+      ids: [],
+    },
+  };
+  if (files.length > 0) {
+    pl.payload.baseDir = window.fileAPI.path.parse(files[0]).dir;
+  }
+  for (let i = 0; i < files.length; i++) {
+    const fl = {
+      id: nanoid(),
+      isEnabled: true,
+      isHidden: false,
+      groupId: grpId,
+      isRunning: false,
+      isLogChecking: false,
+      exitCode: null,
+      runError: null,
+      priorityGroup: 50,
+      status: status.UNKNOWN,
+      messages: {
+        numErrors: null,
+        numWarnings: null,
+        numNotice: null,
+        e: null,
+        em: null,
+        eq: null,
+        w: null,
+        wm: null,
+        wq: null,
+        n: null,
+        nm: null,
+        nq: null,
+      },
+      file: window.fileAPI.path.parse(files[i]),
+      fileInfo: { runtime: null },
+      log: {},
+      logInfo: {},
+    };
+
+    //assign initial priority groups
+    fl.priorityGroup = getPriorityGroup(fl.file.name);
+    pl.payload.files.push(fl);
+    pl.payload.ids.push(fl.id);
+  }
+  //pl.payload.ids = fileSortByName(fileSortByPriority(pl.payload.ids, pl.payload.files), pl.payload.files);
+  return pl;
+};
+
 export const jobSlice = createSlice({
   name: "job",
   initialState: {
     value: {
       title: "Untitled-job",
+      isLoading: false,
       isRunable: false,
       isSaved: false,
       isRunning: false,
@@ -19,6 +146,36 @@ export const jobSlice = createSlice({
     },
   },
   reducers: {
+    setTitle: (state, action) => {
+      if (action.payload) state.value.title = action.payload;
+    },
+    setSaved: (state, action) => {
+      if (action.payload) state.value.isSaved = action.payload;
+    },
+    setIsLoading: (state, action) => {
+      state.value.isLoading = action.payload;
+    },
+
+    loadJob: (state, action) => {
+      state.value = { ...action.payload };
+      state.value.isLoading = true;
+      //const msg = window.fileAPI.showMessage({ type: "info",
+      //  title: "Job",
+      //  message: "Job has been loaded",
+      //  buttons: ["Ok", "Cancel"],
+      //});
+      //console.log(msg);
+    },
+    saveJob: (state, action) => {
+      handleSaveJob(action.payload.path, state.value.title, state.value);
+    },
+    sortGroup: (state, action) => {
+      const groupIndex = state.value.groups.findIndex((group) => group.id === action.payload.groupId);
+      state.value.groups[groupIndex].files = fileSortByName(
+        fileSortByPriority(state.value.groups[groupIndex].files, state.value.files),
+        state.value.files
+      );
+    },
     setGroupShowHidden: (state, action) => {
       const groupIndex = state.value.groups.findIndex((group) => group.id === action.payload.groupId);
 
@@ -44,71 +201,81 @@ export const jobSlice = createSlice({
       //on file add dialog process received file names to the store
       reducer(state, action) {
         const groupIndex = state.value.groups.findIndex((group) => group.id === action.payload.groupId);
-        action.payload && state.value.groups[groupIndex].files.push(...action.payload.ids);
-        action.payload && state.value.files.push(...action.payload.files);
+        if (
+          state.value.groups[groupIndex].baseDir &&
+          state.value.groups[groupIndex].baseDir !== action.payload.baseDir
+        ) {
+          const msg = window.fileAPI.showMessage({
+            type: "error",
+            title: "Error",
+            message: `Files can only be added to the group from only one folder [${state.value.groups[groupIndex].baseDir}]`,
+            buttons: ["Ok"],
+          });
+          return;
+        }
+        for (let fl = 0; fl < action.payload.files.length; fl++) {
+          const fileref = state.value.files.find(
+            (e) =>
+              e.file.name.toUpperCase() === action.payload.files[fl].file.name.toUpperCase() &&
+              e.groupId === action.payload.files[fl].groupId
+          );
+          if (fileref === undefined) {
+            state.value.groups[groupIndex].files.push(action.payload.ids[fl]);
+            state.value.files.push(action.payload.files[fl]);
+          }
+        }
+
+        //action.payload && state.value.groups[groupIndex].files.push(...action.payload.ids);
+        //action.payload && state.value.files.push(...action.payload.files);
         if (action.payload.ids.length > 0) {
           state.value.groups[groupIndex].isDir = action.payload.isDir;
           state.value.groups[groupIndex].baseDir = action.payload.baseDir;
           state.value.isRunable = true;
         }
         //assign log and lst paths
-        if (action.payload.files && action.payload.files.length > 0) {
+        if (state.value.groups[groupIndex].files && state.value.groups[groupIndex].files.length > 0) {
+          const file = state.value.files.find((e) => e.id === state.value.groups[groupIndex].files[0]);
           try {
-            const pb = window.fileAPI.path.normalize(window.fileAPI.path.join(action.payload.files[0].file.dir, ".."));
+            const pb = window.fileAPI.path.normalize(window.fileAPI.path.join(file.file.dir, ".."));
             if (pb) {
               const log = window.fileAPI.path.join(pb, "log");
               const lst = window.fileAPI.path.join(pb, "output");
-              if (window.fileAPI.fs.existsSync(log)) {
-                state.value.groups[groupIndex].settings.logOutputFolder = log;
-              } else state.value.groups[groupIndex].settings.logOutputFolder = action.payload.files[0].file.dir;
-              if (window.fileAPI.fs.existsSync(lst)) {
-                state.value.groups[groupIndex].settings.lstOutputFolder = lst;
-              } else state.value.groups[groupIndex].settings.lstOutputFolder = action.payload.files[0].file.dir;
+              if (!window.fileAPI.fs.existsSync(state.value.groups[groupIndex].settings.logOutputFolder)) {
+                if (window.fileAPI.fs.existsSync(log)) {
+                  state.value.groups[groupIndex].settings.logOutputFolder = log;
+                } else state.value.groups[groupIndex].settings.logOutputFolder = file.file.dir;
+              }
+              if (!window.fileAPI.fs.existsSync(state.value.groups[groupIndex].settings.lstOutputFolder)) {
+                if (window.fileAPI.fs.existsSync(lst)) {
+                  state.value.groups[groupIndex].settings.lstOutputFolder = lst;
+                } else state.value.groups[groupIndex].settings.lstOutputFolder = file.file.dir;
+              }
             }
           } catch {
-            state.value.groups[groupIndex].settings.logOutputFolder = action.payload.files[0].file.dir;
-            state.value.groups[groupIndex].settings.lstOutputFolder = action.payload.files[0].file.dir;
+            state.value.groups[groupIndex].settings.logOutputFolder = file.file.dir;
+            state.value.groups[groupIndex].settings.lstOutputFolder = file.file.dir;
+          }
+
+          for (let f = 0; f < state.value.groups[groupIndex].files.length; f++) {
+            const file = state.value.files.find((e) => e.id === state.value.groups[groupIndex].files[f]);
+            file.log = {
+              ...logFile(state.value.groups[groupIndex].settings.logOutputFolder, file.file.name),
+            };
+            file.logInfo = { ...fileStats(file.log.logPath) };
+            file.fileInfo = {
+              ...file.fileInfo,
+              ...fileStats(window.fileAPI.path.join(file.file.dir, file.file.base)),
+            };
           }
         }
       },
       prepare(grpId, files, isDir) {
-        const pl = {
-          payload: {
-            groupId: grpId,
-            isDir: isDir,
-            baseDir: null,
-            files: [],
-            ids: [],
-          },
-        };
-        if (files.length > 0) {
-          pl.payload.baseDir = window.fileAPI.path.parse(files[0]).dir;
-        }
-        for (let i = 0; i < files.length; i++) {
-          const fl = {
-            id: nanoid(),
-            isEnabled: true,
-            isHidden: false,
-            groupId: grpId,
-            isRunning: false,
-            exitCode: null,
-            runError: null,
-            status: status.UNKNOWN,
-            messages: {
-              numErrors: null,
-              numWarnings: null,
-              numNotice: null,
-            },
-            file: window.fileAPI.path.parse(files[i]),
-          };
-          pl.payload.files.push(fl);
-          pl.payload.ids.push(fl.id);
-        }
-        return pl;
+        const res = { ...prepareFiles(grpId, files, isDir) };
+        return res;
       },
     },
     fileEnabled: (state, action) => {
-      console.log(action.payload);
+      //console.log(action.payload);
       //handle enabling/disabling file
       const fileIndex = state.value.files.findIndex((file) => file.id === action.payload.fileId);
       state.value.files[fileIndex].isEnabled = action.payload.enabled;
@@ -162,6 +329,7 @@ export const jobSlice = createSlice({
             isEnabled: true,
             isShowHidden: true,
             hasHiddenFiles: false,
+            isRunning: false,
             isDir: null, //true - added all Dir, false - added separate files, null - waiting for first add
             baseDir: null,
             status: status.UNKNOWN,
@@ -173,17 +341,48 @@ export const jobSlice = createSlice({
             settings: {
               logOutputFolder: "",
               lstOutputFolder: "",
+              sysParms: "",
             },
             files: [],
           },
         };
       },
     },
+    saveGroupSettings: (state, action) => {
+      const groupIndex = state.value.groups.findIndex((group) => group.id === action.payload.groupId);
+      state.value.groups[groupIndex].settings.logOutputFolder = action.payload.settings.logOutputFolder;
+      state.value.groups[groupIndex].settings.lstOutputFolder = action.payload.settings.lstOutputFolder;
+      state.value.groups[groupIndex].settings.sysParms = action.payload.settings.sysParms;
+    },
     logResults: (state, action) => {
       const fileIndex = state.value.files.findIndex((file) => file.id === action.payload.fileId);
       state.value.files[fileIndex].messages.numErrors = action.payload.e + action.payload.em + action.payload.eq;
       state.value.files[fileIndex].messages.numWarnings = action.payload.w + action.payload.wm + action.payload.wq;
       state.value.files[fileIndex].messages.numNotice = action.payload.n + action.payload.nm + action.payload.nq;
+      state.value.files[fileIndex].messages.e = action.payload.e;
+      state.value.files[fileIndex].messages.em = action.payload.em;
+      state.value.files[fileIndex].messages.eq = action.payload.eq;
+      state.value.files[fileIndex].messages.w = action.payload.w;
+      state.value.files[fileIndex].messages.wm = action.payload.wm;
+      state.value.files[fileIndex].messages.wq = action.payload.wq;
+      state.value.files[fileIndex].messages.n = action.payload.n;
+      state.value.files[fileIndex].messages.nm = action.payload.nm;
+      state.value.files[fileIndex].messages.nq = action.payload.nq;
+      if (action.payload.end) state.value.files[fileIndex].isLogChecking = false;
+    },
+    runCheckLog: (state, action) => {
+      if (action.payload && action.payload.hasOwnProperty("exitCode")) {
+        const fileIndex = state.value.files.findIndex((file) => file.id === action.payload.fileIds[0]);
+
+        const path = state.value.files[fileIndex].log.logPath;
+        //console.log(path);
+        state.value.files[fileIndex].logInfo = { ...fileStats(path) };
+
+        if (path && state.value.files[fileIndex].logInfo.fileExist) {
+          state.value.files[fileIndex].isLogChecking = true;
+          window.fileAPI.logCheck({ fileId: action.payload.fileIds[0], path: path });
+        }
+      }
     },
 
     runApp: (state, action) => {
@@ -192,20 +391,13 @@ export const jobSlice = createSlice({
         //console.log(`Payload: ${JSON.stringify(action.payload)}`);
         if (state.value.runningFiles.length > 0) {
           const fileIndex = state.value.files.findIndex((file) => file.id === action.payload.fileIds[0]);
-          const groupIndex = state.value.groups.findIndex((group) => group.id === state.value.files[fileIndex].groupId);
-          state.value.files[fileIndex].isRunning = false;
+          //const groupIndex = state.value.groups.findIndex((group) => group.id === state.value.files[fileIndex].groupId);
+
           state.value.files[fileIndex].exitCode = action.payload.exitCode;
           state.value.files[fileIndex].runError = action.payload.error;
           state.value.runningFiles = state.value.runningFiles.filter((el) => el.id !== action.payload.fileIds[0]);
 
-          //run logChecker
-          const path =
-            state.value.groups[groupIndex].settings.logOutputFolder +
-            "\\" +
-            state.value.files[fileIndex].file.name +
-            ".log";
-          //console.log(path);
-          window.fileAPI.logCheck({ fileId: action.payload.fileIds[0], path: path }).then((res) => console.log(res));
+          state.value.files[fileIndex].isRunning = false;
 
           if (state.value.filesToRun.length > 0) {
             //run next program
@@ -216,7 +408,8 @@ export const jobSlice = createSlice({
             state.value.runningFiles.push(state.value.files[fileIndex]);
             state.value.filesToRun.shift();
 
-            const run = window.fileAPI.runApp({
+            //const run =
+            window.fileAPI.runApp({
               fileId: state.value.files[fileIndex].id,
               runHidden: state.value.runParams.runSasHidden,
               app: [
@@ -241,12 +434,12 @@ export const jobSlice = createSlice({
 
             //console.log(run);
 
-            if (!run.error) {
-              state.value.files[fileIndex].isRunning = true;
-            } else {
-              state.value.files[fileIndex].runError = run.error;
-              state.value.runningFiles.shift();
-            }
+            //if (!run.error) {
+            state.value.files[fileIndex].isRunning = true;
+            //} else {
+            //   state.value.files[fileIndex].runError = run.error;
+            //   state.value.runningFiles.shift();
+            //  }
           }
         }
       } else if (action.payload && action.payload.fileIds && action.payload.fileIds.length >= 0) {
@@ -263,7 +456,7 @@ export const jobSlice = createSlice({
               state.value.filesToRun = [...state.value.filesToRun, ...files];
             }
           }
-        } else state.value.filesToRun = [...fileIds];
+        } else state.value.filesToRun = [...state.value.filesToRun, ...fileIds];
         if (state.value.filesToRun.length === 0) return;
         state.value.runParams = { sasCfgPath, sasExecPath, sasParams, sasParams1, runSasHidden };
 
@@ -274,7 +467,8 @@ export const jobSlice = createSlice({
         //console.log(`Running file: ${JSON.stringify(state.value.runningFiles)}`);
         state.value.filesToRun.shift();
         //console.log("Hidden: " + JSON.stringify(state.value.runParams.runSasHidden));
-        const run = window.fileAPI.runApp({
+        //const run =
+        window.fileAPI.runApp({
           fileId: state.value.files[fileIndex].id,
           runHidden: state.value.runParams.runSasHidden,
           app: [
@@ -294,12 +488,12 @@ export const jobSlice = createSlice({
           ],
         });
 
-        if (!run.error) {
-          state.value.files[fileIndex].isRunning = true;
-        } else {
-          state.value.files[fileIndex].runError = run.error;
-          state.value.runningFiles.shift();
-        }
+        //if (!run.error) {
+        state.value.files[fileIndex].isRunning = true;
+        // } else {
+        //   state.value.files[fileIndex].runError = run.error;
+        //  state.value.runningFiles.shift();
+        // }
       }
     },
   },
@@ -318,21 +512,62 @@ export const {
   setGroupShowHidden,
   runApp,
   logResults,
+  sortGroup,
+  saveJob,
+  loadJob,
+  setIsLoading,
+  runCheckLog,
+  setTitle,
+  setSaved,
+  saveGroupSettings,
 } = jobSlice.actions;
+
+export const updateDirAsync = (groupId, baseDir) => async (dispatch) => {
+  window.fileAPI.fs.readdir(baseDir, { withFileTypes: true }, (err, dir) => {
+    const files = dir.map((e) => window.fileAPI.path.join(baseDir, e.name));
+    dispatch(addFiles(groupId, files, true));
+    //console.log(files);
+  });
+};
+
+export const updateJobAsync = () => async (dispatch, getState) => {
+  const state = getState().job.value;
+  for (let i = 0; i < state.groups.length; i++) {
+    if (state.groups[i].isDir === true) {
+      const base = state.groups[i].baseDir;
+      const id = state.groups[i].id;
+      window.fileAPI.fs.readdir(base, { withFileTypes: true }, async (err, dir) => {
+        const files = dir.map((e) => window.fileAPI.path.join(base, e.name));
+        dispatch(addFiles(id, files, true));
+      });
+    } else if (state.groups[i].isDir === false) {
+      const fls = [];
+      const id = state.groups[i].id;
+      const files = state.files.filter((e) => e.groupId === id);
+      for (let j = 0; j < files.length; j++) {
+        fls.push(window.fileAPI.path.join(files[j].file.dir, files[j].file.base));
+        //console.log(JSON.stringify(state.files));
+      }
+      dispatch(addFiles(state.groups[i].id, fls, false));
+    }
+  }
+};
+
+export const loadJobAsync = (path, name) => async (dispatch) => {
+  //console.log(path + "/" + name);
+  const db = await window.fileAPI.initDb(path, name, { value: {} });
+  const job = await window.fileAPI.getDb(name, "db.value");
+  dispatch(loadJob(job));
+};
 
 export const addFilesAsync = (groupId, baseDir) => async (dispatch) => {
   const files = await window.fileAPI.openFile(baseDir);
   dispatch(addFiles(groupId, files, false));
 };
+
 export const addDirAsync = (groupId) => async (dispatch) => {
   const files = await window.fileAPI.openDir();
   dispatch(addFiles(groupId, files, true));
 };
-//export const runAppAsync = (fileId) => async (dispatch) => {
-//  const run = await window.fileAPI.runApp({ fileId });
-//  console.log(run);
-//  dispatch(runApp(fileId));
-//};
-//export const loadJobAsync = () => async (dispatch) => {};
 
 export default jobSlice.reducer;

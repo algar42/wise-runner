@@ -7,7 +7,7 @@ import {
   globalSettingsInitAsync,
   locallSettingsInitAsync,
 } from "./features/application/applicationSlice";
-import { groupInit, runApp, logResults } from "./features/job/jobSlice";
+import { groupInit, runApp, logResults, runCheckLog } from "./features/job/jobSlice";
 import { Grid, Container } from "@mui/material";
 import WiseAppBar from "./components/WiseAppBar";
 import JobGroup from "./components/JobGroup";
@@ -23,7 +23,10 @@ function App() {
     dispatch(appInitAsync());
     dispatch(globalSettingsInitAsync());
     dispatch(groupInit());
-    window.fileAPI.handleAppFinish((event, args) => dispatch(runApp(args)));
+    window.fileAPI.handleAppFinish((event, args) => {
+      dispatch(runCheckLog(args));
+      dispatch(runApp(args));
+    });
     window.fileAPI.logCheckResult((event, args) => dispatch(logResults(args)));
     //console.log(workdir);
   }, []);

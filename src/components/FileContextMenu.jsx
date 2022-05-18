@@ -17,7 +17,7 @@ export default function FileContextMenu(props) {
       </MenuItem>
 
       <MenuItem dense onClick={handleHide}>
-        {isHidden ? "Unhide" : "Hide"}
+        {isHidden ? "Undo Remove" : "Remove"}
       </MenuItem>
     </Menu>
   );

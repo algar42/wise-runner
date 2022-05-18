@@ -42,6 +42,7 @@ const GroupEntry = (props) => {
 
   const handleGroupDialogOpen = (event) => {
     event.stopPropagation();
+
     setDialogOpen(true);
   };
   const handleGroupDialogClose = (action, groupId, groupTitle) => {
@@ -158,7 +159,12 @@ const GroupEntry = (props) => {
             />
           </Box>
 
-          <GroupMenu groupId={groupId} handleExpanded={handleGroupExpanded} handleRunGroup={handleRunGroup} />
+          <GroupMenu
+            groupId={groupId}
+            handleExpanded={handleGroupExpanded}
+            handleRunGroup={handleRunGroup}
+            onClick={(e) => e.stopPropagation()}
+          />
         </AccordionSummary>
         <DragDropContext onDragEnd={handleFileDragEnd}>
           <AccordionDetails sx={{ borderTop: "1px solid rgba(0, 0, 0, .125)" }}>

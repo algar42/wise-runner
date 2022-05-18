@@ -43,8 +43,8 @@ export const applicationSlice = createSlice({
       if (action.payload && action.payload.settings) {
         state.value.settings = { ...state.value.settings, ...action.payload.settings };
       }
-      console.log(JSON.stringify(state.value.settings));
-      console.log(JSON.stringify(action.payload.settings));
+      //console.log(JSON.stringify(state.value.settings));
+      //console.log(JSON.stringify(action.payload.settings));
       window.fileAPI.saveDb("wiselocalsettings", { settings: { ...state.value.settings } });
     },
   },
