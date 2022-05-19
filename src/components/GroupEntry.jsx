@@ -10,7 +10,7 @@ import { Box, Checkbox } from "@mui/material";
 import { css, jsx } from "@emotion/react";
 import { useState } from "react";
 import EditGroupTitle from "./EditGroupTitle";
-import { groupTitleEdited, groupEnabled, dragFileMove, runApp } from "../features/job/jobSlice";
+import { groupTitleEdited, groupEnabled, dragFileMove, runApp, clearLogCheckResults } from "../features/job/jobSlice";
 //import FileEntry from "./FileEntry";
 import { MemoFileEntry } from "./FileEntry";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
@@ -52,7 +52,8 @@ const GroupEntry = (props) => {
   };
 
   const handleRunGroup = () => {
-    if (group.files.length > 0)
+    if (group.files.length > 0) {
+      dispatch(clearLogCheckResults({ groupId }));
       dispatch(
         runApp({
           fileIds: group.files.filter((e) => files.find((f) => f.id === e && f.isEnabled)),
@@ -63,6 +64,7 @@ const GroupEntry = (props) => {
           runSasHidden,
         })
       );
+    }
   };
 
   const handleFileDragEnd = (result) => {

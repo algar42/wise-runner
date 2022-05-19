@@ -42,7 +42,15 @@ export default function SaveJobDialog(props) {
 
   return (
     <div>
-      <Dialog open={isOpen} maxWidth="lg" onClose={() => handleDialogClose("")}>
+      <Dialog
+        sx={{
+          "div.MuiDialog-container": {
+            transition: "none !important",
+          },
+        }}
+        open={isOpen}
+        maxWidth="lg"
+        onClose={() => handleDialogClose("")}>
         <DialogTitle>Enter New Name</DialogTitle>
         <DialogContent>
           <TextField

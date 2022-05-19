@@ -7,13 +7,15 @@ import Typography from "@mui/material/Typography";
 import DragIndicatorOutlinedIcon from "@mui/icons-material/DragIndicatorOutlined";
 import { Box, Checkbox } from "@mui/material";
 import { css, jsx } from "@emotion/react";
-import { fileEnabled, fileHide, runApp } from "../features/job/jobSlice";
+import { fileEnabled, fileHide, runApp, runLogViewer, clearLogCheckResults } from "../features/job/jobSlice";
 import BadgeNotifier from "./BadgeNotifier";
 import { useSelector, useDispatch, shallowEqual } from "react-redux";
 import PriorityToggleGroup from "./PriorityToggleGroup";
 import { useSlideScroll } from "../app/useSlideScroll";
 import { memo, useState, useEffect } from "react";
 import FileContextMenu from "./FileContextMenu";
+import Alert from "@mui/material/Alert";
+import Stack from "@mui/material/Stack";
 
 const FileEntry = (props) => {
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -23,7 +25,7 @@ const FileEntry = (props) => {
   const [contextMenu, setContextMenu] = useState(null);
   //const [alertOpen, setAlertOpen] = useState(false);
   const file = useSelector((state) => state.job.value.files.find((e) => e.id === fileId), shallowEqual);
-
+  const logViewerPath = useSelector((state) => state.application.value.settings.logViewerPath);
   const groupEnabled = useSelector((state) => state.job.value.groups.find((e) => e.id === groupId).isEnabled);
 
   const { sasExecPath, sasCfgPath, sasParams, sasParams1, multiThreading, runSasHidden } = useSelector(
@@ -43,6 +45,55 @@ const FileEntry = (props) => {
       ":" +
       convert(seconds % 60)
     );
+  };
+
+  const getErrorString = () => {
+    let e = "";
+    let s = [];
+    if (file.messages.numErrors > 0) e = `${file.messages.numErrors} error` + (file.messages.numErrors > 1 ? "s" : "");
+    if (file.messages.eq > 0) s.push(`${file.messages.eq} QC error` + (file.messages.eq > 1 ? "s" : ""));
+    if (file.messages.em > 0) s.push(`${file.messages.em} Macro error` + (file.messages.em > 1 ? "s" : ""));
+    if (file.messages.eo > 0) s.push(`${file.messages.eo} SAS system error`);
+    if (s.length > 0) {
+      return e + " [" + s.join(",") + "]";
+    } else return e;
+  };
+
+  const getWarningString = () => {
+    let e = "";
+    let s = [];
+    if (file.messages.numWarnings > 0)
+      e = `${file.messages.numWarnings} warning` + (file.messages.numWarnings > 1 ? "s" : "");
+    if (file.messages.wq > 0) s.push(`${file.messages.eq} QC warning` + (file.messages.wq > 1 ? "s" : ""));
+    if (file.messages.wm > 0) s.push(`${file.messages.em} Macro warning` + (file.messages.wm > 1 ? "s" : ""));
+    if (s.length > 0) {
+      return e + " [" + s.join(",") + "]";
+    } else return e;
+  };
+
+  const getNoteString = () => {
+    let e = "";
+    let s = [];
+    let k = [];
+    let e1 = "";
+    let e2 = "";
+    if (file.messages.n > 0) e = `${file.messages.n} note` + (file.messages.n > 1 ? "s" : "");
+    if (file.messages.np > 0) s.push(`${file.messages.np} Prohibited note` + (file.messages.np > 1 ? "s" : ""));
+    if (file.messages.nr > 0) s.push(`${file.messages.nr} Restricted note` + (file.messages.nr > 1 ? "s" : ""));
+    if (file.messages.nq > 0) k.push(`${file.messages.nq} QC note` + (file.messages.nq > 1 ? "s" : ""));
+    if (file.messages.nm > 0) k.push(`${file.messages.nm} Macro note` + (file.messages.nm > 1 ? "s" : ""));
+
+    if (s.length > 0) {
+      e1 = s.join(",");
+    } else {
+      e1 = "No Prohibited or Restricted";
+    }
+    if (k.length > 0) {
+      e2 = k.join(",");
+    }
+
+    if (file.messages.n > 0) return e + " [" + e1 + "]" + (e2 !== "" ? ", plus " + e2 : "");
+    else return e2;
   };
 
   useEffect(() => {
@@ -71,6 +122,7 @@ const FileEntry = (props) => {
   const handleContextMenuAppRun = () => {
     setContextMenu(null);
     //console.log(SasExecPath);
+    dispatch(clearLogCheckResults({ fileId }));
     dispatch(runApp({ fileIds: [fileId], sasExecPath, sasCfgPath, sasParams, sasParams1, runSasHidden }));
   };
 
@@ -119,6 +171,41 @@ const FileEntry = (props) => {
       onClick={(e) => e.stopPropagation()}
     />
   );
+
+  const handleLogClick = (event) => {
+    event.stopPropagation();
+    dispatch(runLogViewer({ logViewerPath, logPath: file.log.logPath }));
+  };
+
+  const pathShorten = (str, maxLen, removeFilename) => {
+    let splitter = "\\",
+      tokens = str.split(splitter),
+      maxLength = maxLen || 25,
+      drive = str.indexOf(":") > -1 ? tokens[0] : "",
+      fileName = tokens[tokens.length - 1],
+      len = removeFilename ? drive.length : drive.length + fileName.length,
+      remLen = maxLength - len - 5, // remove the current lenth and also space for 3 dots and 2 slashes
+      path,
+      lenA,
+      lenB,
+      pathA,
+      pathB;
+    //remove first and last elements from the array
+    tokens.splice(0, 1);
+    tokens.splice(tokens.length - 1, 1);
+    //recreate our path
+    path = tokens.join(splitter);
+    //handle the case of an odd length
+    lenA = Math.ceil(remLen / 2);
+    lenB = Math.floor(remLen / 2);
+    //rebuild the path from beginning and end
+    pathA = path.substring(0, lenA);
+    pathB = path.substring(path.length - lenB);
+    path = drive + splitter + pathA + "..." + pathB + splitter;
+    path = path + (removeFilename ? "" : fileName);
+    //console.log(tokens, maxLength, drive, fileName, len, remLen, pathA, pathB);
+    return path;
+  };
 
   return (
     <Accordion
@@ -213,7 +300,50 @@ const FileEntry = (props) => {
           icon={file.runError !== null ? "error" : exitCodeColor(file.exitCode)}
         />
       </AccordionSummary>
-      <AccordionDetails sx={{ borderTop: "1px solid rgba(0, 0, 0, .125)" }}>{JSON.stringify(file)}</AccordionDetails>
+      <AccordionDetails sx={{ borderTop: "1px solid rgba(0, 0, 0, .125)" }}>
+        <Typography
+          variant="subtitle2"
+          onClick={file.logInfo.fileExist ? handleLogClick : null}
+          sx={
+            file.logInfo.fileExist
+              ? {
+                  "&:hover": {
+                    cursor: "pointer",
+                    color: "blue",
+                  },
+                }
+              : {}
+          }>
+          LOG: {file.logInfo.fileExist ? pathShorten(file.log.logPath, 70, false) : <em>No Log file found</em>}
+        </Typography>
+        {file.isEnabled && groupEnabled ? (
+          <Stack sx={{ width: "100%" }} spacing={0.5}>
+            {file.messages.numErrors ? (
+              <Alert sx={{ padding: "0px 6px" }} variant="outlined" severity="error">
+                {getErrorString()}
+              </Alert>
+            ) : (
+              <div />
+            )}
+            {file.messages.numWarnings ? (
+              <Alert sx={{ padding: "0px 6px" }} variant="outlined" severity="warning">
+                {getWarningString()}
+              </Alert>
+            ) : (
+              <div />
+            )}
+            {file.messages.numNoticeAll ? (
+              <Alert sx={{ padding: "0px 6px" }} variant="outlined" severity="info">
+                {getNoteString()}
+              </Alert>
+            ) : (
+              <div />
+            )}
+          </Stack>
+        ) : (
+          <div />
+        )}
+      </AccordionDetails>
       <FileContextMenu
         contextMenu={contextMenu}
         handleClose={handleContextMenuClose}

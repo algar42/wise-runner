@@ -6,7 +6,15 @@ import MenuItem from "@mui/material/MenuItem";
 import MenuIcon from "@mui/icons-material/Menu";
 import MainSettingsDialog from "./MainSettingsDilaog";
 import { saveLocalSettings } from "../features/application/applicationSlice";
-import { saveJob, loadJobAsync, setIsLoading, updateJobAsync, setTitle, setSaved } from "../features/job/jobSlice";
+import {
+  saveJob,
+  loadJobAsync,
+  setIsLoading,
+  updateJobAsync,
+  setTitle,
+  setSaved,
+  clearLogCheckResults,
+} from "../features/job/jobSlice";
 import { useDispatch, useSelector } from "react-redux";
 import SaveJobDialog from "./SaveJobDialog";
 
@@ -15,6 +23,7 @@ export default function MainMenu() {
   const [mainSettingsOpen, setMainSettigsOpen] = useState(false);
   const metadataPath = useSelector((state) => state.application.value.metadataPath);
   const isLoading = useSelector((state) => state.job.value.isLoading);
+  const isRunning = useSelector((state) => state.job.value.isRunning);
   const title = useSelector((state) => state.job.value.title);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const dispatch = useDispatch();
@@ -26,6 +35,7 @@ export default function MainMenu() {
   useEffect(() => {
     if (isLoading) {
       dispatch(updateJobAsync());
+      dispatch(clearLogCheckResults({ fileId: null, groupId: null }));
       dispatch(setIsLoading(false));
     }
   }, [isLoading]);
@@ -55,6 +65,7 @@ export default function MainMenu() {
           sasParams: props.params,
           sasParams1: props.params1,
           runSasHidden: props.runHidden,
+          logViewerPath: props.logViewerPath,
         },
       })
     );
@@ -89,6 +100,7 @@ export default function MainMenu() {
         color="inherit"
         aria-label="main_menu"
         id="main-button"
+        disabled={isRunning}
         aria-controls={open ? "main-menu" : undefined}
         aria-haspopup="true"
         aria-expanded={open ? "true" : undefined}
@@ -98,6 +110,11 @@ export default function MainMenu() {
       </IconButton>
 
       <Menu
+        sx={{
+          "div.MuiPaper-root": {
+            transition: "none !important",
+          },
+        }}
         id="main-menu"
         anchorEl={anchorEl}
         open={open}

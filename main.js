@@ -13,8 +13,8 @@ const { readdir } = require("fs/promises");
 const logChecker = require("./logCheck");
 
 let sasProces = [];
-
 let sasLog = [];
+let logViewers = [];
 
 const initfolders = initFolders(args, basepath);
 
@@ -88,21 +88,17 @@ const checkLog = (args) => {
 const appRun = (args) => {
   let appr = new appRunner(args.fileId, args.runHidden, args.app, (args) => {
     mainWindow.webContents.send("runAppExit", args);
-    sasProces = sasProces.filter((el) => el.pid !== args.fileIds[0]);
-    //console.log(sasProces);
+    sasProces = sasProces.filter((el) => el.fileId !== args.fileIds[0]);
   });
-  /*
-  let res = appr.getState();
-  if (res.error) {
-    appr = null;
-    return res;
-  } else {
-    sasProces.push({ pid: res.pid, proc: appr });
-    //console.log(sasProces);
-    return res;
-  }
-  */
   sasProces.push({ fileId: args.fileId, proc: appr });
+};
+
+const logViewRun = (args) => {
+  let appr = new appRunner(args.fileId, args.runHidden, args.app, (args) => {
+    mainWindow.webContents.send("logViewExit", args);
+    logViewers = logViewers.filter((el) => el.fileId !== args.fileIds[0]);
+  });
+  logViewers.push({ fileId: args.fileId, proc: appr });
 };
 
 app.whenReady().then(() => {
@@ -136,6 +132,17 @@ app.whenReady().then(() => {
   });
   ipcMain.on("runApp", (event, args) => {
     appRun(args);
+  });
+  ipcMain.on("killApp", (event, args) => {
+    if (sasProces.length > 0) {
+      for (let i = 0; i < sasProces.length; i++) {
+        sasProces[i].proc.kill();
+      }
+      sasProces = [];
+    }
+  });
+  ipcMain.on("logViewRun", (event, args) => {
+    logViewRun(args);
   });
   ipcMain.on("logCheck", (event, args) => {
     checkLog(args);

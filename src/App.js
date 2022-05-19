@@ -7,7 +7,7 @@ import {
   globalSettingsInitAsync,
   locallSettingsInitAsync,
 } from "./features/application/applicationSlice";
-import { groupInit, runApp, logResults, runCheckLog } from "./features/job/jobSlice";
+import { groupInit, runApp, logResults, runCheckLog, setJobRunning, setFileRunning } from "./features/job/jobSlice";
 import { Grid, Container } from "@mui/material";
 import WiseAppBar from "./components/WiseAppBar";
 import JobGroup from "./components/JobGroup";
@@ -18,12 +18,20 @@ function App() {
   //const job = useSelector((state) => state.job.value);
   const dispatch = useDispatch();
   const metadataPath = useSelector((state) => state.application.value.metadataPath);
+  const anyFileRunning = useSelector((state) =>
+    state.job.value.files.map(({ isRunning }) => isRunning).every((e) => e === false)
+  );
+
+  useEffect(() => {
+    dispatch(setJobRunning(!anyFileRunning));
+  }, [anyFileRunning]);
 
   useEffect(() => {
     dispatch(appInitAsync());
     dispatch(globalSettingsInitAsync());
     dispatch(groupInit());
     window.fileAPI.handleAppFinish((event, args) => {
+      dispatch(setFileRunning({ fileId: args.fileIds[0], isRunning: false }));
       dispatch(runCheckLog(args));
       dispatch(runApp(args));
     });

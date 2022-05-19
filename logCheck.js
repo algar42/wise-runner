@@ -8,6 +8,7 @@ class logChecker {
     this.callback = callback;
     this.line = 0;
     this.end = false;
+    this.mis = 1;
     this.result = {
       fileId: this.fileId,
       error: null,
@@ -15,10 +16,13 @@ class logChecker {
       e: 0,
       eq: 0,
       em: 0,
+      eo: 0,
       w: 0,
       wq: 0,
       wm: 0,
       n: 0,
+      nr: 0,
+      np: 0,
       nq: 0,
       nm: 0,
     };
@@ -36,7 +40,10 @@ class logChecker {
     r_n: /(^NOTE\s*\d*\s*[-]*\s*\d*:)/,
     r_nq: /(^NOTE\s*\d*\s*[-]*\s*\d*:\s*\[[Qq][Cc]\]|^NOTE\s*\d*\s*[-]*\s*\d*:\s*QC\s+|^NOTE\s*\d*\s*[-]*\s*\d*:\s*QC$|Note:|note:)/,
     r_nm: /(^NOTE\s*\d*\s*[-]*\s*\d*:\s*\[[a-zA-Z_]+\])/,
-    r_nr: /(The SAS System stopped|Division by zero|could not be performed|No variables|No observations|no observations|Invalid data|Missing value|repeats of BY values|is uninitialized|has the same name|were 0 observations|values have been converted|truncated|Invalid\s+[^\s]*\s*argument|Invalid \(or missing\)\s+[^\s]*\s*argument|Interactivity disabled|hardware font was specified|does not exist|unable |too small|axis range|was not found or could not be loaded)/,
+    r_np: /(MERGE statement|The SAS System stopped)/,
+    r_nr: /(No observations|no observations|is uninitialized|axis range|values have been converted|too small|Invalid data|was not found or could not be loaded|unable |truncated|Invalid\s+[^\s]*\s*argument|Invalid \(or missing\)\s+[^\s]*\s*argument)/,
+    r_no: /(Division by zero|could not be performed|No variables|Missing value|repeats of BY values|has the same name|were 0 observations|Interactivity disabled|hardware font was specified|does not exist)/,
+    r_nmis: /(SAS Campus Drive)/,
   };
 
   async checkLog() {
@@ -46,6 +53,7 @@ class logChecker {
         lineSeparator: ["\n", "\r\n"],
         autoCloseFile: true,
       });
+
       while (true) {
         const line = await reader.next();
         if (line === null) break; // line is null if we reach the end
@@ -69,12 +77,26 @@ class logChecker {
         } else if (this.reg.r_nm.test(line)) {
           this.result.nm++;
         } else if (this.reg.r_n.test(line)) {
-          if (this.reg.r_nr.test(line)) this.result.n++;
+          if (this.reg.r_nr.test(line)) {
+            this.result.n++;
+            this.result.nr++;
+          } else if (this.reg.r_np.test(line)) {
+            this.result.n++;
+            this.result.np++;
+          } else if (this.reg.r_no.test(line)) {
+            this.result.n++;
+          } else if (this.reg.r_nmis.test(line)) {
+            this.mis = 0;
+          }
         }
         if (this.line % 15000 === 0) this.callback(this.result);
       }
+      if (this.mis === 1) {
+        this.result.eo++;
+      }
       this.result.end = true;
       this.callback(this.result);
+      //console.log(this.result);
     } catch (error) {
       this.result.end = true;
       console.log("error: " + error);

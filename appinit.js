@@ -9,6 +9,7 @@ const globalDefaults = {
       sasCfgPath: "E:\\Program Files\\SASHome\\SASFoundation\\9.4\\nls\\en\\sasv9.cfg",
       sasParams: "-rsasuser -nosplash -nologo lrecl = 4000",
       sasParams1: "",
+      logViewerPath: "C:\\Program Files\\Notepad++\\notepad++.exe",
       multiThreading: false,
       numberOfThreads: 2,
       runSasHidden: true,

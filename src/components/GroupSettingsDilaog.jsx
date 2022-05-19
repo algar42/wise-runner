@@ -40,7 +40,16 @@ export default function GroupSettingsDialog(props) {
   };
 
   return (
-    <Dialog open={isOpen} onClose={handleCancel} onClick={(e) => e.stopPropagation()} fullWidth>
+    <Dialog
+      sx={{
+        "div.MuiDialog-container": {
+          transition: "none !important",
+        },
+      }}
+      open={isOpen}
+      onClose={handleCancel}
+      onClick={(e) => e.stopPropagation()}
+      fullWidth>
       <DialogTitle>Group [{title}] Settings</DialogTitle>
       <DialogContent>
         <Grid container spacing={1}>

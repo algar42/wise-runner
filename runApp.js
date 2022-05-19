@@ -20,7 +20,9 @@ class appRunner {
         windowsVerbatimArguments: true,
         shell: false,
         windowsHide: this.runHidden,
+        argv0: "",
       });
+
       this.pid = this.child.pid;
       this.child.on("error", (err) => {
         this.error = err.errno;
@@ -52,6 +54,16 @@ class appRunner {
         error: this.error,
       });
     }
+  }
+
+  kill() {
+    this.child.kill("SIGKILL");
+    this.callback({
+      exitCode: 999,
+      fileIds: [this.fileId],
+      pid: null,
+      error: this.error,
+    });
   }
 
   getState() {

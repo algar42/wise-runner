@@ -103,6 +103,7 @@ const prepareFiles = (grpId, files, isDir) => {
         numErrors: null,
         numWarnings: null,
         numNotice: null,
+        numNoticeAll: null,
         e: null,
         em: null,
         eq: null,
@@ -112,6 +113,8 @@ const prepareFiles = (grpId, files, isDir) => {
         n: null,
         nm: null,
         nq: null,
+        nr: null,
+        np: null,
       },
       file: window.fileAPI.path.parse(files[i]),
       fileInfo: { runtime: null },
@@ -155,7 +158,13 @@ export const jobSlice = createSlice({
     setIsLoading: (state, action) => {
       state.value.isLoading = action.payload;
     },
-
+    setJobRunning: (state, action) => {
+      state.value.isRunning = action.payload;
+    },
+    setFileRunning: (state, action) => {
+      const fileIndex = state.value.files.findIndex((file) => file.id === action.payload.fileId);
+      state.value.files[fileIndex].isRunning = action.payload.isRunning;
+    },
     loadJob: (state, action) => {
       state.value = { ...action.payload };
       state.value.isLoading = true;
@@ -168,6 +177,11 @@ export const jobSlice = createSlice({
     },
     saveJob: (state, action) => {
       handleSaveJob(action.payload.path, state.value.title, state.value);
+    },
+    stopJobExecution: (state, value) => {
+      state.value.filesToRun = [];
+      //state.value.runningFiles = [];
+      window.fileAPI.killApp();
     },
     sortGroup: (state, action) => {
       const groupIndex = state.value.groups.findIndex((group) => group.id === action.payload.groupId);
@@ -327,7 +341,7 @@ export const jobSlice = createSlice({
             id: nanoid(),
             title: `Untitled`,
             isEnabled: true,
-            isShowHidden: true,
+            isShowHidden: false,
             hasHiddenFiles: false,
             isRunning: false,
             isDir: null, //true - added all Dir, false - added separate files, null - waiting for first add
@@ -354,20 +368,54 @@ export const jobSlice = createSlice({
       state.value.groups[groupIndex].settings.lstOutputFolder = action.payload.settings.lstOutputFolder;
       state.value.groups[groupIndex].settings.sysParms = action.payload.settings.sysParms;
     },
+    clearLogCheckResults: (state, action) => {
+      if (action.payload.fileId) {
+        const fileIndex = state.value.files.findIndex((file) => file.id === action.payload.fileId);
+        state.value.files[fileIndex].runError = null;
+        state.value.files[fileIndex].exitCode = null;
+        for (const [key] of Object.entries(state.value.files[fileIndex].messages)) {
+          state.value.files[fileIndex].messages[key] = null;
+        }
+      } else if (action.payload.groupId) {
+        for (const [key] of Object.entries(state.value.files)) {
+          if (state.value.files[key].groupId === action.payload.groupId) {
+            state.value.files[key].runError = null;
+            state.value.files[key].exitCode = null;
+            for (const [msg] of Object.entries(state.value.files[key].messages)) {
+              state.value.files[key].messages[msg] = null;
+            }
+          }
+        }
+      } else {
+        for (const [key] of Object.entries(state.value.files)) {
+          state.value.files[key].runError = null;
+          state.value.files[key].exitCode = null;
+          for (const [msg] of Object.entries(state.value.files[key].messages)) {
+            state.value.files[key].messages[msg] = null;
+          }
+        }
+      }
+    },
     logResults: (state, action) => {
       const fileIndex = state.value.files.findIndex((file) => file.id === action.payload.fileId);
-      state.value.files[fileIndex].messages.numErrors = action.payload.e + action.payload.em + action.payload.eq;
+      state.value.files[fileIndex].messages.numErrors =
+        action.payload.e + action.payload.em + action.payload.eq + action.payload.eo;
       state.value.files[fileIndex].messages.numWarnings = action.payload.w + action.payload.wm + action.payload.wq;
-      state.value.files[fileIndex].messages.numNotice = action.payload.n + action.payload.nm + action.payload.nq;
+      state.value.files[fileIndex].messages.numNotice = action.payload.np + action.payload.nr;
+      state.value.files[fileIndex].messages.numNoticeAll = action.payload.n + action.payload.nm + action.payload.nq;
       state.value.files[fileIndex].messages.e = action.payload.e;
       state.value.files[fileIndex].messages.em = action.payload.em;
       state.value.files[fileIndex].messages.eq = action.payload.eq;
+      state.value.files[fileIndex].messages.eo = action.payload.eo;
       state.value.files[fileIndex].messages.w = action.payload.w;
       state.value.files[fileIndex].messages.wm = action.payload.wm;
       state.value.files[fileIndex].messages.wq = action.payload.wq;
       state.value.files[fileIndex].messages.n = action.payload.n;
       state.value.files[fileIndex].messages.nm = action.payload.nm;
       state.value.files[fileIndex].messages.nq = action.payload.nq;
+      state.value.files[fileIndex].messages.nr = action.payload.nr;
+      state.value.files[fileIndex].messages.np = action.payload.np;
+
       if (action.payload.end) state.value.files[fileIndex].isLogChecking = false;
     },
     runCheckLog: (state, action) => {
@@ -383,6 +431,14 @@ export const jobSlice = createSlice({
           window.fileAPI.logCheck({ fileId: action.payload.fileIds[0], path: path });
         }
       }
+    },
+
+    runLogViewer: (state, action) => {
+      window.fileAPI.logViewRun({
+        fileId: action.payload.fileId,
+        runHidden: false,
+        app: [action.payload.logViewerPath, '"' + action.payload.logPath + '"'],
+      });
     },
 
     runApp: (state, action) => {
@@ -427,6 +483,8 @@ export const jobSlice = createSlice({
                 '"' + state.value.groups[groupIndex].settings.lstOutputFolder + '"',
                 "-Log",
                 '"' + state.value.groups[groupIndex].settings.logOutputFolder + '"',
+                "-sysparm",
+                '"' + state.value.groups[groupIndex].settings.sysParms + '"',
                 state.value.runParams.sasParams,
                 state.value.runParams.sasParams1,
               ],
@@ -483,6 +541,8 @@ export const jobSlice = createSlice({
             '"' + state.value.groups[groupIndex].settings.lstOutputFolder + '"',
             "-Log",
             '"' + state.value.groups[groupIndex].settings.logOutputFolder + '"',
+            "-sysparm",
+            '"' + state.value.groups[groupIndex].settings.sysParms + '"',
             state.value.runParams.sasParams,
             state.value.runParams.sasParams1,
           ],
@@ -520,6 +580,11 @@ export const {
   setTitle,
   setSaved,
   saveGroupSettings,
+  runLogViewer,
+  clearLogCheckResults,
+  setJobRunning,
+  stopJobExecution,
+  setFileRunning,
 } = jobSlice.actions;
 
 export const updateDirAsync = (groupId, baseDir) => async (dispatch) => {

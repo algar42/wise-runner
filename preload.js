@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld("fileAPI", {
   openDir: () => ipcRenderer.invoke("openDir"),
   getInit: () => ipcRenderer.invoke("getInit"),
   runApp: (args) => ipcRenderer.send("runApp", args),
+  killApp: (args) => ipcRenderer.send("killApp", args),
+  logViewRun: (args) => ipcRenderer.send("logViewRun", args),
   logCheck: (args) => ipcRenderer.send("logCheck", args),
   handleAppFinish: (callback) => ipcRenderer.on("runAppExit", callback),
   logCheckResult: (callback) => ipcRenderer.on("logCheckResult", callback),

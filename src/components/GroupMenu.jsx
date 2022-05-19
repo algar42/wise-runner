@@ -11,6 +11,7 @@ import {
   updateDirAsync,
   saveGroupSettings,
   updateJobAsync,
+  clearLogCheckResults,
 } from "../features/job/jobSlice";
 import { useDispatch, useSelector } from "react-redux";
 import GroupSettingsDialog from "./GroupSettingsDilaog";
@@ -24,8 +25,10 @@ export default function GroupMenu(props) {
   const { hasHiddenFiles, isDir, baseDir, isShowHidden } = useSelector((state) =>
     state.job.value.groups.find((e) => e.id === groupId)
   );
+  const isRunning = useSelector((state) => state.job.value.isRunning);
 
   const [groupSettingsOpen, setgroupSettigsOpen] = useState(false);
+
   const handleSettingsOpen = (event) => {
     setAnchorEl(null);
     event.stopPropagation();
@@ -73,6 +76,7 @@ export default function GroupMenu(props) {
   const handleUpdateDir = (event) => {
     event.stopPropagation();
     setAnchorEl(null);
+    dispatch(clearLogCheckResults({ groupId }));
     dispatch(updateDirAsync(groupId, baseDir));
     //handleExpanded(event, true);
   };
@@ -110,6 +114,7 @@ export default function GroupMenu(props) {
         color="primary"
         aria-label="group_menu"
         id="group-button"
+        disabled={isRunning}
         aria-controls={open ? "group-menu" : undefined}
         aria-haspopup="true"
         aria-expanded={open ? "true" : undefined}
@@ -119,6 +124,11 @@ export default function GroupMenu(props) {
       </IconButton>
 
       <Menu
+        sx={{
+          "div.MuiPaper-root": {
+            transition: "none !important",
+          },
+        }}
         id="main-menu"
         anchorEl={anchorEl}
         open={open}

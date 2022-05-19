@@ -16,6 +16,7 @@ export default function MainSettingsDialog(props) {
   const [params, setParams] = useState(settings.sasParams);
   const [params1, setParams1] = useState(settings.sasParams1);
   const [runHidden, setRunHidden] = useState(settings.runSasHidden);
+  const [logViewerPath, setlogViewerPath] = useState(settings.logViewerPath);
 
   useEffect(() => {
     setExecPath(settings.sasExecPath);
@@ -23,6 +24,7 @@ export default function MainSettingsDialog(props) {
     setParams(settings.sasParams);
     setParams1(settings.sasParams1);
     setRunHidden(settings.runSasHidden);
+    setlogViewerPath(settings.logViewerPath);
   }, [settings]);
 
   const handleInputChange = (event) => {
@@ -42,13 +44,24 @@ export default function MainSettingsDialog(props) {
       case "runHidden":
         setRunHidden(Boolean(event.target.checked));
         break;
+      case "logViewerPath":
+        setlogViewerPath(event.target.value);
+        break;
       default:
         break;
     }
   };
 
   return (
-    <Dialog open={isOpen} onClose={handleCancel} fullWidth>
+    <Dialog
+      sx={{
+        "div.MuiDialog-container": {
+          transition: "none !important",
+        },
+      }}
+      open={isOpen}
+      onClose={handleCancel}
+      fullWidth>
       <DialogTitle>Settings</DialogTitle>
       <DialogContent>
         <Grid container spacing={1}>
@@ -113,11 +126,24 @@ export default function MainSettingsDialog(props) {
               />
             </FormGroup>
           </Grid>
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              size="small"
+              id="logViewerPath"
+              label="SAS Log View Application Path"
+              defaultValue={settings.logViewerPath}
+              margin="dense"
+              onChange={handleInputChange}
+            />
+          </Grid>
         </Grid>
       </DialogContent>
       <DialogActions>
         <Button onClick={handleCancel}>Cancel</Button>
-        <Button onClick={() => handleSave({ execPath, cfgPath, params, params1, runHidden })}>Save</Button>
+        <Button onClick={() => handleSave({ execPath, cfgPath, params, params1, runHidden, logViewerPath })}>
+          Save
+        </Button>
       </DialogActions>
     </Dialog>
   );
