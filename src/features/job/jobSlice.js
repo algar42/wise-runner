@@ -140,6 +140,8 @@ export const jobSlice = createSlice({
       isRunable: false,
       isSaved: false,
       isRunning: false,
+      isAppClosed: false,
+      jobSaveRequest: false,
       runParams: {},
       status: status.UNKNOWN,
       groups: [],
@@ -150,10 +152,10 @@ export const jobSlice = createSlice({
   },
   reducers: {
     setTitle: (state, action) => {
-      if (action.payload) state.value.title = action.payload;
+      if (action.payload !== "") state.value.title = action.payload;
     },
     setSaved: (state, action) => {
-      if (action.payload) state.value.isSaved = action.payload;
+      state.value.isSaved = action.payload;
     },
     setIsLoading: (state, action) => {
       state.value.isLoading = action.payload;
@@ -167,7 +169,10 @@ export const jobSlice = createSlice({
     },
     loadJob: (state, action) => {
       state.value = { ...action.payload };
+      state.value.jobSaveRequest = false;
+      state.value.isAppClosed = false;
       state.value.isLoading = true;
+      state.value.isSaved = true;
       //const msg = window.fileAPI.showMessage({ type: "info",
       //  title: "Job",
       //  message: "Job has been loaded",
@@ -209,6 +214,19 @@ export const jobSlice = createSlice({
       } else {
         const filter = state.value.files.filter((e) => e.groupId === inGroup && e.isHidden === true) || [];
         if (filter.length === 0) state.value.groups[groupIndex].hasHiddenFiles = false;
+      }
+    },
+    onApplicationClose: (state, action) => {
+      if (action.payload && action.payload === true) state.value.isAppClosed = true;
+      else {
+        const msg = window.fileAPI.showMessage({
+          type: "question",
+          title: "Close",
+          message: "Do you want to save current Job?",
+          buttons: ["Yes", "No"],
+        });
+        if (msg === 1) state.value.isAppClosed = true;
+        else state.value.jobSaveRequest = true;
       }
     },
     addFiles: {
@@ -585,6 +603,7 @@ export const {
   setJobRunning,
   stopJobExecution,
   setFileRunning,
+  onApplicationClose,
 } = jobSlice.actions;
 
 export const updateDirAsync = (groupId, baseDir) => async (dispatch) => {

@@ -14,6 +14,7 @@ import {
   setTitle,
   setSaved,
   clearLogCheckResults,
+  onApplicationClose,
 } from "../features/job/jobSlice";
 import { useDispatch, useSelector } from "react-redux";
 import SaveJobDialog from "./SaveJobDialog";
@@ -24,8 +25,10 @@ export default function MainMenu() {
   const metadataPath = useSelector((state) => state.application.value.metadataPath);
   const isLoading = useSelector((state) => state.job.value.isLoading);
   const isRunning = useSelector((state) => state.job.value.isRunning);
+  const jobSaveRequest = useSelector((state) => state.job.value.jobSaveRequest);
   const title = useSelector((state) => state.job.value.title);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+
   const dispatch = useDispatch();
   const handleSettingsOpen = () => {
     setAnchorEl(null);
@@ -33,10 +36,19 @@ export default function MainMenu() {
   };
 
   useEffect(() => {
+    if (jobSaveRequest) {
+      setSaveDialogOpen(true);
+    }
+  }, [jobSaveRequest]);
+
+  useEffect(() => {
     if (isLoading) {
       dispatch(updateJobAsync());
       dispatch(clearLogCheckResults({ fileId: null, groupId: null }));
-      dispatch(setIsLoading(false));
+      dispatch(setSaved(true));
+      setTimeout(() => {
+        dispatch(setIsLoading(false));
+      }, 500);
     }
   }, [isLoading]);
 
@@ -89,6 +101,7 @@ export default function MainMenu() {
       dispatch(setTitle(title));
       dispatch(saveJob({ path: metadataPath }));
       dispatch(setSaved(true));
+      if (jobSaveRequest) dispatch(onApplicationClose(true));
     }
   };
 

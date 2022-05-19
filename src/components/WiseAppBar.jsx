@@ -29,7 +29,9 @@ export default function WiseAppBar() {
         </Typography>
         <Typography variant="body2" component="div" sx={{ flexGrow: 1 }}>
           <Box sx={{ paddingTop: 0 }}>JOB:</Box>
-          <Typography variant="inherit">{title}</Typography>
+          <Typography variant="inherit" sx={isSaved ? {} : { fontStyle: "italic" }}>
+            {title} {isSaved ? "" : "*"}
+          </Typography>
         </Typography>
 
         {!isRunning ? (

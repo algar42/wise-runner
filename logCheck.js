@@ -32,13 +32,13 @@ class logChecker {
 
   reg = {
     r_e: /(^ERROR\s*\d*\s*[-]*\s*\d*:|^FATAL\s*\d*\s*[-]*\s*\d*:)/,
-    r_eq: /(^ERROR\s*\d*\s*[-]*\s*\d*:\s*\[[Qq][Cc]\]|^ERROR\s*\d*\s*[-]*\s*\d*:\s*QC\s+|^ERROR\s*\d*\s*[-]*\s*\d*:\s*QC$|^Error:|^error:)/,
+    r_eq: /(^ERROR\s*\d*\s*[-]*\s*\d*:\s*\[[Qq][Cc]\]|^ERROR\s*\d*\s*[-]*\s*\d*:\s*QC\s*|^ERROR\s*\d*\s*[-]*\s*\d*:\s*QC$|^Error:|^error:)/,
     r_em: /(^ERROR\s*\d*\s*[-]*\s*\d*:\s*\[[a-zA-Z_]+\])/,
     r_w: /(^WARNING\s*\d*\s*[-]*\s*\d*:)/,
-    r_wq: /(^WARNING\s*\d*\s*[-]*\s*\d*:\s*\[[Qq][Cc]\]|^WARNING\s*\d*\s*[-]*\s*\d*:\s*QC\s+|^WARNING\s*\d*\s*[-]*\s*\d*:\s*QC$|^Warning:|^warning:)/,
+    r_wq: /(^WARNING\s*\d*\s*[-]*\s*\d*:\s*\[[Qq][Cc]\]|^WARNING\s*\d*\s*[-]*\s*\d*:\s*QC\s*|^WARNING\s*\d*\s*[-]*\s*\d*:\s*QC$|^Warning:|^warning:)/,
     r_wm: /(^WARNING\s*\d*\s*[-]*\s*\d*:\s*\[[a-zA-Z_]+\])/,
     r_n: /(^NOTE\s*\d*\s*[-]*\s*\d*:)/,
-    r_nq: /(^NOTE\s*\d*\s*[-]*\s*\d*:\s*\[[Qq][Cc]\]|^NOTE\s*\d*\s*[-]*\s*\d*:\s*QC\s+|^NOTE\s*\d*\s*[-]*\s*\d*:\s*QC$|Note:|note:)/,
+    r_nq: /(^NOTE\s*\d*\s*[-]*\s*\d*:\s*\[[Qq][Cc]\]|^NOTE\s*\d*\s*[-]*\s*\d*:\s*QC\s*|^NOTE\s*\d*\s*[-]*\s*\d*:\s*QC$|^Note:|^note:)/,
     r_nm: /(^NOTE\s*\d*\s*[-]*\s*\d*:\s*\[[a-zA-Z_]+\])/,
     r_np: /(MERGE statement|The SAS System stopped)/,
     r_nr: /(No observations|no observations|is uninitialized|axis range|values have been converted|too small|Invalid data|was not found or could not be loaded|unable |truncated|Invalid\s+[^\s]*\s*argument|Invalid \(or missing\)\s+[^\s]*\s*argument)/,

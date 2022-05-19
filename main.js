@@ -15,6 +15,7 @@ const logChecker = require("./logCheck");
 let sasProces = [];
 let sasLog = [];
 let logViewers = [];
+let closeStatus = 0;
 
 const initfolders = initFolders(args, basepath);
 
@@ -176,16 +177,34 @@ const createWindow = () => {
   mainWindow.webContents.openDevTools();
   //}
 
+  mainWindow.on("close", (e) => {
+    if (closeStatus === 0) {
+      if (mainWindow) {
+        e.preventDefault();
+        mainWindow.webContents.send("app-close");
+      }
+    }
+  });
   mainWindow.on("closed", () => (mainWindow = null));
 };
 
 app.on("ready", createWindow);
 
+ipcMain.on("app-closed", () => {
+  closeStatus = 1;
+  mainWindow = null;
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
+});
+
+/*
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
 });
+*/
 
 app.on("activate", () => {
   if (mainWindow === null) {

@@ -55,7 +55,7 @@ const FileEntry = (props) => {
     if (file.messages.em > 0) s.push(`${file.messages.em} Macro error` + (file.messages.em > 1 ? "s" : ""));
     if (file.messages.eo > 0) s.push(`${file.messages.eo} SAS system error`);
     if (s.length > 0) {
-      return e + " [" + s.join(",") + "]";
+      return e + " [" + s.join(", ") + "]";
     } else return e;
   };
 
@@ -65,9 +65,9 @@ const FileEntry = (props) => {
     if (file.messages.numWarnings > 0)
       e = `${file.messages.numWarnings} warning` + (file.messages.numWarnings > 1 ? "s" : "");
     if (file.messages.wq > 0) s.push(`${file.messages.eq} QC warning` + (file.messages.wq > 1 ? "s" : ""));
-    if (file.messages.wm > 0) s.push(`${file.messages.em} Macro warning` + (file.messages.wm > 1 ? "s" : ""));
+    if (file.messages.wm > 0) s.push(`${file.messages.wm} Macro warning` + (file.messages.wm > 1 ? "s" : ""));
     if (s.length > 0) {
-      return e + " [" + s.join(",") + "]";
+      return e + " [" + s.join(", ") + "]";
     } else return e;
   };
 
@@ -84,12 +84,12 @@ const FileEntry = (props) => {
     if (file.messages.nm > 0) k.push(`${file.messages.nm} Macro note` + (file.messages.nm > 1 ? "s" : ""));
 
     if (s.length > 0) {
-      e1 = s.join(",");
+      e1 = s.join(", ");
     } else {
       e1 = "No Prohibited or Restricted";
     }
     if (k.length > 0) {
-      e2 = k.join(",");
+      e2 = k.join(" and ");
     }
 
     if (file.messages.n > 0) return e + " [" + e1 + "]" + (e2 !== "" ? ", plus " + e2 : "");

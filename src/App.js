@@ -1,13 +1,22 @@
 import React from "react";
 import { useEffect } from "react";
 import "./App.css";
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector, useDispatch, shallowEqual } from "react-redux";
 import {
   appInitAsync,
   globalSettingsInitAsync,
   locallSettingsInitAsync,
 } from "./features/application/applicationSlice";
-import { groupInit, runApp, logResults, runCheckLog, setJobRunning, setFileRunning } from "./features/job/jobSlice";
+import {
+  groupInit,
+  runApp,
+  logResults,
+  runCheckLog,
+  setJobRunning,
+  setFileRunning,
+  onApplicationClose,
+  setSaved,
+} from "./features/job/jobSlice";
 import { Grid, Container } from "@mui/material";
 import WiseAppBar from "./components/WiseAppBar";
 import JobGroup from "./components/JobGroup";
@@ -18,13 +27,33 @@ function App() {
   //const job = useSelector((state) => state.job.value);
   const dispatch = useDispatch();
   const metadataPath = useSelector((state) => state.application.value.metadataPath);
+  const isClosed = useSelector((state) => state.job.value.isAppClosed);
+  const isLoading = useSelector((state) => state.job.value.isLoading);
   const anyFileRunning = useSelector((state) =>
     state.job.value.files.map(({ isRunning }) => isRunning).every((e) => e === false)
   );
 
+  //to watch changes to decide if we need saving
+  const wFiles = useSelector((state) => state.job.value.groups.map(({ files }) => files), shallowEqual);
+  const wGroupsTitle = useSelector((state) => state.job.value.groups.map(({ title }) => title), shallowEqual);
+  const wGroupsIds = useSelector((state) => state.job.value.groups.map(({ id }) => id), shallowEqual);
+
+  useEffect(() => {
+    if (isLoading === false) {
+      dispatch(setSaved(false));
+      console.log("here");
+    }
+  }, [wFiles, wGroupsTitle, wGroupsIds]);
+
   useEffect(() => {
     dispatch(setJobRunning(!anyFileRunning));
   }, [anyFileRunning]);
+
+  useEffect(() => {
+    if (isClosed) {
+      window.fileAPI.applicationClosed();
+    }
+  }, [isClosed]);
 
   useEffect(() => {
     dispatch(appInitAsync());
@@ -36,6 +65,10 @@ function App() {
       dispatch(runApp(args));
     });
     window.fileAPI.logCheckResult((event, args) => dispatch(logResults(args)));
+    window.fileAPI.handleApplicationClose((event) => {
+      console.log("Rendered closing");
+      dispatch(onApplicationClose());
+    });
     //console.log(workdir);
   }, []);
 
