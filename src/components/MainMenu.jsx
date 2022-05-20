@@ -5,6 +5,7 @@ import Box from "@mui/material/Box";
 import MenuItem from "@mui/material/MenuItem";
 import MenuIcon from "@mui/icons-material/Menu";
 import MainSettingsDialog from "./MainSettingsDilaog";
+import { Divider } from "@mui/material";
 import { saveLocalSettings } from "../features/application/applicationSlice";
 import {
   saveJob,
@@ -15,9 +16,11 @@ import {
   setSaved,
   clearLogCheckResults,
   onApplicationClose,
+  getSavedJobsListAsync,
 } from "../features/job/jobSlice";
 import { useDispatch, useSelector } from "react-redux";
 import SaveJobDialog from "./SaveJobDialog";
+import LoadJobDialog from "./LoadJobDialog";
 
 export default function MainMenu() {
   const [anchorEl, setAnchorEl] = useState(null);
@@ -28,6 +31,7 @@ export default function MainMenu() {
   const jobSaveRequest = useSelector((state) => state.job.value.jobSaveRequest);
   const title = useSelector((state) => state.job.value.title);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [loadDialogOpen, setLoadDialogOpen] = useState(false);
 
   const dispatch = useDispatch();
   const handleSettingsOpen = () => {
@@ -56,13 +60,10 @@ export default function MainMenu() {
     setMainSettigsOpen(false);
   };
 
-  const handleSaveJob = () => {
-    dispatch(saveJob({ path: metadataPath }));
-    setAnchorEl(null);
-  };
-
-  const handleLoadJob = () => {
-    dispatch(loadJobAsync(metadataPath, "test-job"));
+  const handleLoadJob = (name) => {
+    //dispatch(getSavedJobsListAsync(metadataPath));
+    dispatch(loadJobAsync(metadataPath, name));
+    setLoadDialogOpen(false);
     setAnchorEl(null);
   };
 
@@ -96,6 +97,13 @@ export default function MainMenu() {
     setAnchorEl(null);
     setSaveDialogOpen(true);
   };
+
+  const handleLoadDialogOpen = (event) => {
+    event.stopPropagation();
+    setAnchorEl(null);
+    setLoadDialogOpen(true);
+  };
+
   const handleSaveDialogClose = (action, title) => {
     if (action === "OK") {
       dispatch(setTitle(title));
@@ -103,6 +111,10 @@ export default function MainMenu() {
       dispatch(setSaved(true));
       if (jobSaveRequest) dispatch(onApplicationClose(true));
     }
+  };
+
+  const handleLoadDialogClose = () => {
+    setLoadDialogOpen(false);
   };
 
   return (
@@ -135,17 +147,15 @@ export default function MainMenu() {
         MenuListProps={{
           "aria-labelledby": "main-button",
         }}>
-        <MenuItem dense onClick={handleClose}>
-          Jobs
-        </MenuItem>
-        <MenuItem dense onClick={handleSettingsOpen}>
-          Settings
+        <MenuItem dense onClick={handleLoadDialogOpen}>
+          Load Job
         </MenuItem>
         <MenuItem dense onClick={handleSaveDialogOpen}>
           Save Job
         </MenuItem>
-        <MenuItem dense onClick={handleLoadJob}>
-          Load Job
+        <Divider />
+        <MenuItem dense onClick={handleSettingsOpen}>
+          Settings
         </MenuItem>
       </Menu>
       <MainSettingsDialog
@@ -158,6 +168,12 @@ export default function MainMenu() {
         title={title}
         handleClose={handleSaveDialogClose}
         handleOpen={setSaveDialogOpen}
+      />
+      <LoadJobDialog
+        isOpen={loadDialogOpen}
+        handleCancel={handleLoadDialogClose}
+        handleLoad={handleLoadJob}
+        metadataPath={metadataPath}
       />
     </Box>
   );

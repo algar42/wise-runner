@@ -34,16 +34,31 @@ function App() {
   );
 
   //to watch changes to decide if we need saving
-  const wFiles = useSelector((state) => state.job.value.groups.map(({ files }) => files), shallowEqual);
+  const wFilesId = useSelector((state) => state.job.value.groups.map(({ files }) => files), shallowEqual);
   const wGroupsTitle = useSelector((state) => state.job.value.groups.map(({ title }) => title), shallowEqual);
   const wGroupsIds = useSelector((state) => state.job.value.groups.map(({ id }) => id), shallowEqual);
+  const wGroups = useSelector(
+    (state) =>
+      state.job.value.groups.map(({ isEnabled, isShowHidden, baseDir }) => [isEnabled, isShowHidden, baseDir]).flat(),
+    shallowEqual
+  );
+  const wGroupsSetting = useSelector((state) => state.job.value.groups.map(({ settings }) => settings), shallowEqual);
+  const wFiles = useSelector(
+    (state) =>
+      state.job.value.files
+        .map(({ isEnabled, isHidden, priorityGroup }) => [isEnabled, isHidden, priorityGroup])
+        .flat(),
+    shallowEqual
+  );
 
   useEffect(() => {
     if (isLoading === false) {
       dispatch(setSaved(false));
-      console.log("here");
     }
-  }, [wFiles, wGroupsTitle, wGroupsIds]);
+    if (wGroupsIds.length === 0) {
+      dispatch(groupInit());
+    }
+  }, [wFilesId, wGroupsTitle, wGroupsIds, wGroups, wGroupsSetting, wFiles]);
 
   useEffect(() => {
     dispatch(setJobRunning(!anyFileRunning));
@@ -59,6 +74,10 @@ function App() {
     dispatch(appInitAsync());
     dispatch(globalSettingsInitAsync());
     dispatch(groupInit());
+    setTimeout(() => {
+      dispatch(setSaved(true));
+    }, 300);
+
     window.fileAPI.handleAppFinish((event, args) => {
       dispatch(setFileRunning({ fileId: args.fileIds[0], isRunning: false }));
       dispatch(runCheckLog(args));

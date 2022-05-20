@@ -138,7 +138,7 @@ export const jobSlice = createSlice({
       title: "Untitled-job",
       isLoading: false,
       isRunable: false,
-      isSaved: false,
+      isSaved: true,
       isRunning: false,
       isAppClosed: false,
       jobSaveRequest: false,
@@ -148,6 +148,7 @@ export const jobSlice = createSlice({
       files: [],
       runningFiles: [],
       filesToRun: [],
+      savedJobsList: [],
     },
   },
   reducers: {
@@ -173,20 +174,24 @@ export const jobSlice = createSlice({
       state.value.isAppClosed = false;
       state.value.isLoading = true;
       state.value.isSaved = true;
-      //const msg = window.fileAPI.showMessage({ type: "info",
-      //  title: "Job",
-      //  message: "Job has been loaded",
-      //  buttons: ["Ok", "Cancel"],
-      //});
-      //console.log(msg);
     },
     saveJob: (state, action) => {
       handleSaveJob(action.payload.path, state.value.title, state.value);
+    },
+    getSavedJobsList: (state, action) => {
+      if (action.payload.length > 0) state.value.savedJobsList = [...action.payload];
+      else state.value.savedJobsList = [];
+      //console.log(JSON.stringify(state.value.savedJobsList));
     },
     stopJobExecution: (state, value) => {
       state.value.filesToRun = [];
       //state.value.runningFiles = [];
       window.fileAPI.killApp();
+    },
+    deleteGroup: (state, action) => {
+      //const groupIndex = state.value.groups.findIndex((group) => group.id === action.payload.groupId);
+      state.value.files = state.value.files.filter((e) => e.groupId !== action.payload.groupId);
+      state.value.groups = state.value.groups.filter((e) => e.id !== action.payload.groupId);
     },
     sortGroup: (state, action) => {
       const groupIndex = state.value.groups.findIndex((group) => group.id === action.payload.groupId);
@@ -219,14 +224,16 @@ export const jobSlice = createSlice({
     onApplicationClose: (state, action) => {
       if (action.payload && action.payload === true) state.value.isAppClosed = true;
       else {
-        const msg = window.fileAPI.showMessage({
-          type: "question",
-          title: "Close",
-          message: "Do you want to save current Job?",
-          buttons: ["Yes", "No"],
-        });
-        if (msg === 1) state.value.isAppClosed = true;
-        else state.value.jobSaveRequest = true;
+        if (state.value.isSaved === false) {
+          const msg = window.fileAPI.showMessage({
+            type: "question",
+            title: "Close",
+            message: "Do you want to save current Job?",
+            buttons: ["Yes", "No"],
+          });
+          if (msg === 1) state.value.isAppClosed = true;
+          else state.value.jobSaveRequest = true;
+        } else state.value.isAppClosed = true;
       }
     },
     addFiles: {
@@ -604,12 +611,29 @@ export const {
   stopJobExecution,
   setFileRunning,
   onApplicationClose,
+  getSavedJobsList,
+  deleteGroup,
 } = jobSlice.actions;
 
 export const updateDirAsync = (groupId, baseDir) => async (dispatch) => {
   window.fileAPI.fs.readdir(baseDir, { withFileTypes: true }, (err, dir) => {
     const files = dir.map((e) => window.fileAPI.path.join(baseDir, e.name));
     dispatch(addFiles(groupId, files, true));
+    //console.log(files);
+  });
+};
+
+export const getSavedJobsListAsync = (dir) => async (dispatch) => {
+  window.fileAPI.fs.readdir(dir, { withFileTypes: true }, (err, fls) => {
+    const files = fls
+      .map((e) => window.fileAPI.path.parse(window.fileAPI.path.join(dir, e.name)))
+      .filter(
+        (e) =>
+          e.ext === ".sdb" &&
+          e.name.toUpperCase().indexOf("WISELOCALSETTINGS") < 0 &&
+          e.name.toUpperCase().indexOf("WISEGLOBALSETTINGS") < 0
+      );
+    dispatch(getSavedJobsList(files));
     //console.log(files);
   });
 };

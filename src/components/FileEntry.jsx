@@ -64,7 +64,7 @@ const FileEntry = (props) => {
     let s = [];
     if (file.messages.numWarnings > 0)
       e = `${file.messages.numWarnings} warning` + (file.messages.numWarnings > 1 ? "s" : "");
-    if (file.messages.wq > 0) s.push(`${file.messages.eq} QC warning` + (file.messages.wq > 1 ? "s" : ""));
+    if (file.messages.wq > 0) s.push(`${file.messages.wq} QC warning` + (file.messages.wq > 1 ? "s" : ""));
     if (file.messages.wm > 0) s.push(`${file.messages.wm} Macro warning` + (file.messages.wm > 1 ? "s" : ""));
     if (s.length > 0) {
       return e + " [" + s.join(", ") + "]";

@@ -12,6 +12,7 @@ import {
   saveGroupSettings,
   updateJobAsync,
   clearLogCheckResults,
+  deleteGroup,
 } from "../features/job/jobSlice";
 import { useDispatch, useSelector } from "react-redux";
 import GroupSettingsDialog from "./GroupSettingsDilaog";
@@ -106,6 +107,10 @@ export default function GroupMenu(props) {
     setAnchorEl(null);
   };
 
+  const handleDeleteGroup = (event) => {
+    dispatch(deleteGroup({ groupId }));
+  };
+
   return (
     <Box>
       <IconButton
@@ -154,7 +159,7 @@ export default function GroupMenu(props) {
         <MenuItem dense onClick={handleSortGroup}>
           Sort Group
         </MenuItem>
-        <MenuItem dense onClick={handleClose}>
+        <MenuItem dense onClick={handleDeleteGroup}>
           Delete Group
         </MenuItem>
         <MenuItem dense onClick={handleSettingsOpen}>

@@ -30,7 +30,7 @@ export default function WiseAppBar() {
         <Typography variant="body2" component="div" sx={{ flexGrow: 1 }}>
           <Box sx={{ paddingTop: 0 }}>JOB:</Box>
           <Typography variant="inherit" sx={isSaved ? {} : { fontStyle: "italic" }}>
-            {title} {isSaved ? "" : "*"}
+            {title.toUpperCase()} {isSaved ? "" : "*"}
           </Typography>
         </Typography>
 
