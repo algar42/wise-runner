@@ -4,8 +4,9 @@ import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import { useState, useEffect } from "react";
+import { syncGroupSysParms } from "../features/job/jobSlice";
 
 export default function GroupSettingsDialog(props) {
   const { handleCancel, handleSave, isOpen, groupId } = props;
@@ -14,6 +15,7 @@ export default function GroupSettingsDialog(props) {
   const [logOutputFolder, setlogOutputFolderh] = useState();
   const [lstOutputFolder, setlstOutputFolder] = useState();
   const [sysParms, setsysParms] = useState();
+  const dispatch = useDispatch();
 
   useEffect(() => {
     setlogOutputFolderh(settings.logOutputFolder);
@@ -49,10 +51,11 @@ export default function GroupSettingsDialog(props) {
       open={isOpen}
       onClose={handleCancel}
       onClick={(e) => e.stopPropagation()}
-      fullWidth>
+      fullWidth
+      maxWidth="md">
       <DialogTitle>Group [{title}] Settings</DialogTitle>
       <DialogContent>
-        <Grid container spacing={1}>
+        <Grid container spacing={1} alignItems="center">
           <Grid item xs={12}>
             <TextField
               required
@@ -77,7 +80,7 @@ export default function GroupSettingsDialog(props) {
               onChange={handleInputChange}
             />
           </Grid>
-          <Grid item xs={12}>
+          <Grid item xs={9}>
             <TextField
               fullWidth
               size="small"
@@ -87,6 +90,11 @@ export default function GroupSettingsDialog(props) {
               margin="dense"
               onChange={handleInputChange}
             />
+          </Grid>
+          <Grid item xs={3}>
+            <Button size="small" onClick={() => dispatch(syncGroupSysParms(sysParms))}>
+              copy to all groups
+            </Button>
           </Grid>
         </Grid>
       </DialogContent>

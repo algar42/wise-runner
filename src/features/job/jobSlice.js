@@ -1,4 +1,4 @@
-import { createSlice, nanoid } from "@reduxjs/toolkit";
+import { createSlice, nanoid, createAsyncThunk } from "@reduxjs/toolkit";
 import { status } from "../../app/constants";
 import { arrayMoveImmutable } from "array-move";
 
@@ -59,7 +59,7 @@ const fileStats = (path) => {
 };
 
 const logFile = (path, name) => {
-  return { logPath: path + "\\" + name + ".log" };
+  return { logPath: path + "\\" + name + ".log", logName: (name + ".log").toUpperCase() };
 };
 
 const handleSaveJob = (path, name, job) => {
@@ -131,16 +131,124 @@ const prepareFiles = (grpId, files, isDir) => {
   return pl;
 };
 
+//Async action to select and add selected SAS files
+export const addFilesAsync = createAsyncThunk("job/addFiles_", async (args, thunkAPI) => {
+  const { groupId, baseDir, filesUpdate } = args;
+  const state = thunkAPI.getState().job.value;
+  let files = [];
+  if (filesUpdate) files = filesUpdate;
+  else files = await window.fileAPI.openFile(baseDir);
+  const res = { ...prepareFiles(groupId, files, false) };
+
+  const groupIndex = state.groups.findIndex((group) => group.id === groupId);
+  return new Promise((resolve, reject) => {
+    if (files.length === 0) {
+      reject({ error: "files not added" });
+    } else if (state.groups[groupIndex].baseDir && state.groups[groupIndex].baseDir !== res.payload.baseDir) {
+      window.fileAPI.showMessage({
+        type: "error",
+        title: "Error",
+        message: `Files can only be added to the group from only one folder [${state.groups[groupIndex].baseDir}]`,
+        buttons: ["Ok"],
+      });
+      reject({ error: "files not added" });
+    } else resolve(res.payload);
+  });
+});
+
+//Async action to select and add all files from folder
+export const addDirAsync = createAsyncThunk("job/addFiles_", async (args, thunkAPI) => {
+  const { groupId, filesUpdate } = args;
+  let files = [];
+  if (filesUpdate) files = filesUpdate;
+  else files = await window.fileAPI.openDir();
+  const res = { ...prepareFiles(groupId, files, true) };
+  return new Promise((resolve, reject) => {
+    resolve(res.payload);
+  });
+});
+
+export const onApplicationClose = createAsyncThunk("job/ApplicationClose", async (args, thunkAPI) => {
+  const state = thunkAPI.getState().job.value;
+  return new Promise((resolve, reject) => {
+    console.log(args);
+    if (args && args.closeImmidiate === true) resolve({ error: false, needSaving: false });
+    else if (state.isSaved === false) {
+      const msg = window.fileAPI.showMessage({
+        type: "question",
+        title: "Close",
+        message: "Do you want to save current Job?",
+        buttons: ["Yes", "No"],
+      });
+      if (msg === 0) reject(thunkAPI.rejectWithValue({ error: true, needSaving: true }));
+      else resolve({ error: false, needSaving: false });
+    } else resolve({ error: false, needSaving: false });
+  });
+});
+
+export const updateJobAsync = () => async (dispatch, getState) => {
+  const state = getState().job.value;
+  for (let i = 0; i < state.groups.length; i++) {
+    if (state.groups[i].isDir === true) {
+      const base = state.groups[i].baseDir;
+      const id = state.groups[i].id;
+      window.fileAPI.fs.readdir(base, { withFileTypes: true }, async (err, dir) => {
+        const files = dir
+          .map((e) => window.fileAPI.path.parse(window.fileAPI.path.join(base, e.name)))
+          .filter((e) => e.ext.toUpperCase() === ".SAS");
+        dispatch(addDirAsync({ groupId: id, filesUpdate: files.map((e) => window.fileAPI.path.join(e.dir, e.base)) }));
+      });
+    } else if (state.groups[i].isDir === false) {
+      const fls = [];
+      const id = state.groups[i].id;
+      const files = state.files.filter((e) => e.groupId === id);
+      for (let j = 0; j < files.length; j++) {
+        fls.push(window.fileAPI.path.join(files[j].file.dir, files[j].file.base));
+        //console.log(JSON.stringify(state.files));
+      }
+      dispatch(addFilesAsync({ groupId: state.groups[i].id, filesUpdate: fls }));
+    }
+  }
+  return new Promise((resolve, reject) => {
+    resolve("OK");
+  });
+};
+
+export const updateDirAsync = (groupId, baseDir) => async (dispatch) => {
+  await window.fileAPI.fs.readdir(baseDir, { withFileTypes: true }, (err, dir) => {
+    const files = dir
+      .map((e) => window.fileAPI.path.parse(window.fileAPI.path.join(baseDir, e.name)))
+      .filter((e) => e.ext.toUpperCase() === ".SAS");
+    console.log(files);
+    dispatch(addDirAsync({ groupId, filesUpdate: files.map((e) => window.fileAPI.path.join(e.dir, e.base)) }));
+    //console.log(files);
+  });
+  return new Promise((resolve, reject) => {
+    resolve("OK");
+  });
+};
+
+export const loadJobAsync = createAsyncThunk("job/loadJobAsync", async (args, thunkAPI) => {
+  const { metadataPath, name } = args;
+  const db = await window.fileAPI.initDb(metadataPath, name, { value: {} });
+  const job = await window.fileAPI.getDb(name, "db.value");
+
+  return new Promise((resolve, reject) => {
+    resolve(job);
+  });
+});
+
 export const jobSlice = createSlice({
   name: "job",
   initialState: {
     value: {
       title: "Untitled-job",
-      isLoading: false,
+      isLoading: "No",
       isRunable: false,
       isSaved: true,
       isRunning: false,
       isAppClosed: false,
+      isAppClosing: false,
       jobSaveRequest: false,
       runParams: {},
       status: status.UNKNOWN,
@@ -162,19 +270,45 @@ export const jobSlice = createSlice({
       state.value.isLoading = action.payload;
     },
     setJobRunning: (state, action) => {
-      state.value.isRunning = action.payload;
+      let groupIndex = null;
+      if (action.payload !== "") groupIndex = state.value.groups.findIndex((group) => group.id === action.payload);
+      state.value.isRunning = Boolean(action.payload);
+      if (groupIndex !== null) {
+        state.value.groups[groupIndex].isRunning = Boolean(action.payload);
+        console.log(groupIndex);
+      } else {
+        for (let i = 0; i < state.value.groups.length; i++) {
+          state.value.groups[i].isRunning = false;
+        }
+      }
     },
     setFileRunning: (state, action) => {
       const fileIndex = state.value.files.findIndex((file) => file.id === action.payload.fileId);
       state.value.files[fileIndex].isRunning = action.payload.isRunning;
     },
-    loadJob: (state, action) => {
-      state.value = { ...action.payload };
-      state.value.jobSaveRequest = false;
-      state.value.isAppClosed = false;
-      state.value.isLoading = true;
-      state.value.isSaved = true;
+    setJobSaveRequest: (state, action) => {
+      state.value.jobSaveRequest = action.payload;
     },
+    clearJob: (state) => {
+      state.value = {
+        title: "Untitled-job",
+        isLoading: "No",
+        isRunable: false,
+        isSaved: true,
+        isRunning: false,
+        isAppClosed: false,
+        isAppClosing: false,
+        jobSaveRequest: false,
+        runParams: {},
+        status: status.UNKNOWN,
+        groups: [],
+        files: [],
+        runningFiles: [],
+        filesToRun: [],
+        savedJobsList: [],
+      };
+    },
+
     saveJob: (state, action) => {
       handleSaveJob(action.payload.path, state.value.title, state.value);
     },
@@ -188,10 +322,18 @@ export const jobSlice = createSlice({
       //state.value.runningFiles = [];
       window.fileAPI.killApp();
     },
+    setAllFilesChecked: (state, action) => {
+      //const files = state.value.groups.filter((file) => file.groupId === action.payload.groupId);
+      for (let i = 0; i < state.value.files.length; i++) {
+        if (state.value.files[i].groupId === action.payload.groupId)
+          state.value.files[i].isEnabled = action.payload.isEnabled;
+      }
+    },
     deleteGroup: (state, action) => {
       //const groupIndex = state.value.groups.findIndex((group) => group.id === action.payload.groupId);
       state.value.files = state.value.files.filter((e) => e.groupId !== action.payload.groupId);
       state.value.groups = state.value.groups.filter((e) => e.id !== action.payload.groupId);
+      state.value.isSaved = false;
     },
     sortGroup: (state, action) => {
       const groupIndex = state.value.groups.findIndex((group) => group.id === action.payload.groupId);
@@ -221,98 +363,19 @@ export const jobSlice = createSlice({
         if (filter.length === 0) state.value.groups[groupIndex].hasHiddenFiles = false;
       }
     },
-    onApplicationClose: (state, action) => {
-      if (action.payload && action.payload === true) state.value.isAppClosed = true;
-      else {
-        if (state.value.isSaved === false) {
-          const msg = window.fileAPI.showMessage({
-            type: "question",
-            title: "Close",
-            message: "Do you want to save current Job?",
-            buttons: ["Yes", "No"],
-          });
-          if (msg === 1) state.value.isAppClosed = true;
-          else state.value.jobSaveRequest = true;
-        } else state.value.isAppClosed = true;
+
+    onJobLoad: (state, action) => {
+      if (state.value.isSaved === false) {
+        const msg = window.fileAPI.showMessage({
+          type: "question",
+          title: "Save",
+          message: "Do you want to save current Job?",
+          buttons: ["Yes", "No"],
+        });
+        if (msg === 0) state.value.jobSaveRequest = true;
       }
     },
-    addFiles: {
-      //on file add dialog process received file names to the store
-      reducer(state, action) {
-        const groupIndex = state.value.groups.findIndex((group) => group.id === action.payload.groupId);
-        if (
-          state.value.groups[groupIndex].baseDir &&
-          state.value.groups[groupIndex].baseDir !== action.payload.baseDir
-        ) {
-          const msg = window.fileAPI.showMessage({
-            type: "error",
-            title: "Error",
-            message: `Files can only be added to the group from only one folder [${state.value.groups[groupIndex].baseDir}]`,
-            buttons: ["Ok"],
-          });
-          return;
-        }
-        for (let fl = 0; fl < action.payload.files.length; fl++) {
-          const fileref = state.value.files.find(
-            (e) =>
-              e.file.name.toUpperCase() === action.payload.files[fl].file.name.toUpperCase() &&
-              e.groupId === action.payload.files[fl].groupId
-          );
-          if (fileref === undefined) {
-            state.value.groups[groupIndex].files.push(action.payload.ids[fl]);
-            state.value.files.push(action.payload.files[fl]);
-          }
-        }
 
-        //action.payload && state.value.groups[groupIndex].files.push(...action.payload.ids);
-        //action.payload && state.value.files.push(...action.payload.files);
-        if (action.payload.ids.length > 0) {
-          state.value.groups[groupIndex].isDir = action.payload.isDir;
-          state.value.groups[groupIndex].baseDir = action.payload.baseDir;
-          state.value.isRunable = true;
-        }
-        //assign log and lst paths
-        if (state.value.groups[groupIndex].files && state.value.groups[groupIndex].files.length > 0) {
-          const file = state.value.files.find((e) => e.id === state.value.groups[groupIndex].files[0]);
-          try {
-            const pb = window.fileAPI.path.normalize(window.fileAPI.path.join(file.file.dir, ".."));
-            if (pb) {
-              const log = window.fileAPI.path.join(pb, "log");
-              const lst = window.fileAPI.path.join(pb, "output");
-              if (!window.fileAPI.fs.existsSync(state.value.groups[groupIndex].settings.logOutputFolder)) {
-                if (window.fileAPI.fs.existsSync(log)) {
-                  state.value.groups[groupIndex].settings.logOutputFolder = log;
-                } else state.value.groups[groupIndex].settings.logOutputFolder = file.file.dir;
-              }
-              if (!window.fileAPI.fs.existsSync(state.value.groups[groupIndex].settings.lstOutputFolder)) {
-                if (window.fileAPI.fs.existsSync(lst)) {
-                  state.value.groups[groupIndex].settings.lstOutputFolder = lst;
-                } else state.value.groups[groupIndex].settings.lstOutputFolder = file.file.dir;
-              }
-            }
-          } catch {
-            state.value.groups[groupIndex].settings.logOutputFolder = file.file.dir;
-            state.value.groups[groupIndex].settings.lstOutputFolder = file.file.dir;
-          }
-
-          for (let f = 0; f < state.value.groups[groupIndex].files.length; f++) {
-            const file = state.value.files.find((e) => e.id === state.value.groups[groupIndex].files[f]);
-            file.log = {
-              ...logFile(state.value.groups[groupIndex].settings.logOutputFolder, file.file.name),
-            };
-            file.logInfo = { ...fileStats(file.log.logPath) };
-            file.fileInfo = {
-              ...file.fileInfo,
-              ...fileStats(window.fileAPI.path.join(file.file.dir, file.file.base)),
-            };
-          }
-        }
-      },
-      prepare(grpId, files, isDir) {
-        const res = { ...prepareFiles(grpId, files, isDir) };
-        return res;
-      },
-    },
     fileEnabled: (state, action) => {
       //console.log(action.payload);
       //handle enabling/disabling file
@@ -392,6 +455,11 @@ export const jobSlice = createSlice({
       state.value.groups[groupIndex].settings.logOutputFolder = action.payload.settings.logOutputFolder;
       state.value.groups[groupIndex].settings.lstOutputFolder = action.payload.settings.lstOutputFolder;
       state.value.groups[groupIndex].settings.sysParms = action.payload.settings.sysParms;
+    },
+    syncGroupSysParms: (state, action) => {
+      for (let i = 0; i < state.value.groups.length; i++) {
+        state.value.groups[i].settings.sysParms = action.payload;
+      }
     },
     clearLogCheckResults: (state, action) => {
       if (action.payload.fileId) {
@@ -582,6 +650,83 @@ export const jobSlice = createSlice({
       }
     },
   },
+  extraReducers: {
+    [loadJobAsync.fulfilled]: (state, action) => {
+      state.value = { ...action.payload };
+      state.value.jobSaveRequest = false;
+      state.value.isAppClosed = false;
+      state.value.isLoading = "Loading";
+      state.value.isSaved = true;
+      state.value.isAppClosing = false;
+    },
+    [onApplicationClose.rejected]: (state, action) => {
+      state.value.isAppClosing = true;
+      if (action.payload.needSaving) state.value.jobSaveRequest = true;
+    },
+    [onApplicationClose.fulfilled]: (state) => {
+      state.value.jobSaveRequest = false;
+      window.fileAPI.applicationClosed();
+    },
+    [addFilesAsync.rejected]: () => {},
+    [addFilesAsync.fulfilled]: (state, action) => {
+      //console.log(action);
+      const groupIndex = state.value.groups.findIndex((group) => group.id === action.payload.groupId);
+
+      for (let fl = 0; fl < action.payload.files.length; fl++) {
+        const fileref = state.value.files.find(
+          (e) =>
+            e.file.name.toUpperCase() === action.payload.files[fl].file.name.toUpperCase() &&
+            e.groupId === action.payload.files[fl].groupId
+        );
+        if (fileref === undefined) {
+          state.value.groups[groupIndex].files.push(action.payload.ids[fl]);
+          state.value.files.push(action.payload.files[fl]);
+        }
+      }
+
+      if (action.payload.ids.length > 0) {
+        state.value.groups[groupIndex].isDir = action.payload.isDir;
+        state.value.groups[groupIndex].baseDir = action.payload.baseDir;
+        state.value.isRunable = true;
+      }
+      //assign log and lst paths
+      if (state.value.groups[groupIndex].files && state.value.groups[groupIndex].files.length > 0) {
+        const file = state.value.files.find((e) => e.id === state.value.groups[groupIndex].files[0]);
+        try {
+          const pb = window.fileAPI.path.normalize(window.fileAPI.path.join(file.file.dir, ".."));
+          if (pb) {
+            const log = window.fileAPI.path.join(pb, "log");
+            const lst = window.fileAPI.path.join(pb, "output");
+            if (!window.fileAPI.fs.existsSync(state.value.groups[groupIndex].settings.logOutputFolder)) {
+              if (window.fileAPI.fs.existsSync(log)) {
+                state.value.groups[groupIndex].settings.logOutputFolder = log;
+              } else state.value.groups[groupIndex].settings.logOutputFolder = file.file.dir;
+            }
+            if (!window.fileAPI.fs.existsSync(state.value.groups[groupIndex].settings.lstOutputFolder)) {
+              if (window.fileAPI.fs.existsSync(lst)) {
+                state.value.groups[groupIndex].settings.lstOutputFolder = lst;
+              } else state.value.groups[groupIndex].settings.lstOutputFolder = file.file.dir;
+            }
+          }
+        } catch {
+          state.value.groups[groupIndex].settings.logOutputFolder = file.file.dir;
+          state.value.groups[groupIndex].settings.lstOutputFolder = file.file.dir;
+        }
+
+        for (let f = 0; f < state.value.groups[groupIndex].files.length; f++) {
+          const file = state.value.files.find((e) => e.id === state.value.groups[groupIndex].files[f]);
+          file.log = {
+            ...logFile(state.value.groups[groupIndex].settings.logOutputFolder, file.file.name),
+          };
+          file.logInfo = { ...fileStats(file.log.logPath) };
+          file.fileInfo = {
+            ...file.fileInfo,
+            ...fileStats(window.fileAPI.path.join(file.file.dir, file.file.base)),
+          };
+        }
+      }
+    },
+  },
 });
 
 // Action creators are generated for each case reducer function
@@ -590,7 +735,7 @@ export const {
   dragGroupMove,
   groupTitleEdited,
   groupEnabled,
-  addFiles,
+
   fileEnabled,
   dragFileMove,
   fileHide,
@@ -599,7 +744,6 @@ export const {
   logResults,
   sortGroup,
   saveJob,
-  loadJob,
   setIsLoading,
   runCheckLog,
   setTitle,
@@ -610,18 +754,14 @@ export const {
   setJobRunning,
   stopJobExecution,
   setFileRunning,
-  onApplicationClose,
+  setJobSaveRequest,
   getSavedJobsList,
   deleteGroup,
+  onJobLoad,
+  clearJob,
+  syncGroupSysParms,
+  setAllFilesChecked,
 } = jobSlice.actions;
-
-export const updateDirAsync = (groupId, baseDir) => async (dispatch) => {
-  window.fileAPI.fs.readdir(baseDir, { withFileTypes: true }, (err, dir) => {
-    const files = dir.map((e) => window.fileAPI.path.join(baseDir, e.name));
-    dispatch(addFiles(groupId, files, true));
-    //console.log(files);
-  });
-};
 
 export const getSavedJobsListAsync = (dir) => async (dispatch) => {
   window.fileAPI.fs.readdir(dir, { withFileTypes: true }, (err, fls) => {
@@ -636,46 +776,6 @@ export const getSavedJobsListAsync = (dir) => async (dispatch) => {
     dispatch(getSavedJobsList(files));
     //console.log(files);
   });
-};
-
-export const updateJobAsync = () => async (dispatch, getState) => {
-  const state = getState().job.value;
-  for (let i = 0; i < state.groups.length; i++) {
-    if (state.groups[i].isDir === true) {
-      const base = state.groups[i].baseDir;
-      const id = state.groups[i].id;
-      window.fileAPI.fs.readdir(base, { withFileTypes: true }, async (err, dir) => {
-        const files = dir.map((e) => window.fileAPI.path.join(base, e.name));
-        dispatch(addFiles(id, files, true));
-      });
-    } else if (state.groups[i].isDir === false) {
-      const fls = [];
-      const id = state.groups[i].id;
-      const files = state.files.filter((e) => e.groupId === id);
-      for (let j = 0; j < files.length; j++) {
-        fls.push(window.fileAPI.path.join(files[j].file.dir, files[j].file.base));
-        //console.log(JSON.stringify(state.files));
-      }
-      dispatch(addFiles(state.groups[i].id, fls, false));
-    }
-  }
-};
-
-export const loadJobAsync = (path, name) => async (dispatch) => {
-  //console.log(path + "/" + name);
-  const db = await window.fileAPI.initDb(path, name, { value: {} });
-  const job = await window.fileAPI.getDb(name, "db.value");
-  dispatch(loadJob(job));
-};
-
-export const addFilesAsync = (groupId, baseDir) => async (dispatch) => {
-  const files = await window.fileAPI.openFile(baseDir);
-  dispatch(addFiles(groupId, files, false));
-};
-
-export const addDirAsync = (groupId) => async (dispatch) => {
-  const files = await window.fileAPI.openDir();
-  dispatch(addFiles(groupId, files, true));
 };
 
 export default jobSlice.reducer;

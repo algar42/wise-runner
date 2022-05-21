@@ -173,9 +173,9 @@ const createWindow = () => {
     mainWindow.loadFile("build/index.html");
   }
 
-  //if (isDev) {
-  mainWindow.webContents.openDevTools();
-  //}
+  if (isDev) {
+    mainWindow.webContents.openDevTools();
+  }
 
   mainWindow.on("close", (e) => {
     if (closeStatus === 0) {

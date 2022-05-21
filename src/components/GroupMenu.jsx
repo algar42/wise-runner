@@ -13,10 +13,12 @@ import {
   updateJobAsync,
   clearLogCheckResults,
   deleteGroup,
+  setAllFilesChecked,
 } from "../features/job/jobSlice";
 import { useDispatch, useSelector } from "react-redux";
 import GroupSettingsDialog from "./GroupSettingsDilaog";
 import { useState } from "react";
+import { Divider } from "@mui/material";
 
 export default function GroupMenu(props) {
   const [anchorEl, setAnchorEl] = useState(null);
@@ -69,9 +71,11 @@ export default function GroupMenu(props) {
 
   const handleAddFiles = (event) => {
     event.stopPropagation();
-    dispatch(addFilesAsync(groupId, baseDir));
     setAnchorEl(null);
-    handleExpanded(event, true);
+    dispatch(addFilesAsync({ groupId, baseDir }))
+      .unwrap()
+      .then(() => handleExpanded(event, true))
+      .catch(() => {});
   };
 
   const handleUpdateDir = (event) => {
@@ -84,9 +88,11 @@ export default function GroupMenu(props) {
 
   const handleAddDir = (event) => {
     event.stopPropagation();
-    dispatch(addDirAsync(groupId));
     setAnchorEl(null);
-    handleExpanded(event, true);
+    dispatch(addDirAsync({ groupId }))
+      .unwrap()
+      .then(() => handleExpanded(event, true))
+      .catch(() => {});
   };
 
   const handleShowHidden = (event) => {
@@ -108,7 +114,15 @@ export default function GroupMenu(props) {
   };
 
   const handleDeleteGroup = (event) => {
+    setAnchorEl(null);
+    event.stopPropagation();
     dispatch(deleteGroup({ groupId }));
+  };
+
+  const handleSetAllChecked = (event, isEnabled) => {
+    setAnchorEl(null);
+    event.stopPropagation();
+    dispatch(setAllFilesChecked({ groupId, isEnabled }));
   };
 
   return (
@@ -147,21 +161,31 @@ export default function GroupMenu(props) {
         <MenuItem dense disabled={isDir !== null} onClick={handleAddDir}>
           Add Folder
         </MenuItem>
-        <MenuItem dense disabled={isDir == null || isDir === false} onClick={handleUpdateDir}>
-          Update Group
-        </MenuItem>
-        <MenuItem dense disabled={!hasHiddenFiles} onClick={handleShowHidden}>
-          {isShowHidden ? "Hide Removed" : "Show Removed"}
-        </MenuItem>
+        <Divider />
         <MenuItem dense onClick={handleRunGroupItem}>
           Run Group
         </MenuItem>
         <MenuItem dense onClick={handleSortGroup}>
           Sort Group
         </MenuItem>
+        <MenuItem dense disabled={isDir == null || isDir === false} onClick={handleUpdateDir}>
+          Update Group
+        </MenuItem>
+        <MenuItem dense disabled={!hasHiddenFiles} onClick={handleShowHidden}>
+          {isShowHidden ? "Hide Removed" : "Show Removed"}
+        </MenuItem>
+
         <MenuItem dense onClick={handleDeleteGroup}>
           Delete Group
         </MenuItem>
+        <Divider />
+        <MenuItem dense onClick={(event) => handleSetAllChecked(event, true)}>
+          Check All
+        </MenuItem>
+        <MenuItem dense onClick={(event) => handleSetAllChecked(event, false)}>
+          UnCheck All
+        </MenuItem>
+        <Divider />
         <MenuItem dense onClick={handleSettingsOpen}>
           Settings
         </MenuItem>

@@ -6,9 +6,9 @@ import AccordionSummary from "@mui/material/AccordionSummary";
 import Typography from "@mui/material/Typography";
 import DragIndicatorOutlinedIcon from "@mui/icons-material/DragIndicatorOutlined";
 import ModeEditOutlineOutlinedIcon from "@mui/icons-material/ModeEditOutlineOutlined";
-import { Box, Checkbox } from "@mui/material";
+import { Box, Checkbox, Stack } from "@mui/material";
 import { css, jsx } from "@emotion/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import EditGroupTitle from "./EditGroupTitle";
 import { groupTitleEdited, groupEnabled, dragFileMove, runApp, clearLogCheckResults } from "../features/job/jobSlice";
 //import FileEntry from "./FileEntry";
@@ -16,10 +16,12 @@ import { MemoFileEntry } from "./FileEntry";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import GroupMenu from "./GroupMenu";
 import { useSelector, useDispatch, shallowEqual } from "react-redux";
+import { pathShorten, convertSeconds } from "../app/utils";
 
 const GroupEntry = (props) => {
   const accSummHeight = 35;
   const { groupId } = props;
+  const [elapsedTime, setElapsedTime] = useState(0);
   const [editGroupDialogOpen, setDialogOpen] = useState(false);
   const [groupExpanded, setGroupExpanded] = useState(false);
 
@@ -85,6 +87,20 @@ const GroupEntry = (props) => {
       onClick={(e) => e.stopPropagation()}
     />
   );
+
+  useEffect(() => {
+    let interval = null;
+    let status = group.isRunning;
+    if (status) {
+      interval = setInterval(() => {
+        setElapsedTime((elapsedTime) => elapsedTime + 1);
+      }, 1000);
+    } else if (!status) {
+      clearInterval(interval);
+      setElapsedTime(0);
+    }
+    return () => clearInterval(interval);
+  }, [group.isRunning, elapsedTime]);
 
   return (
     <div>
@@ -159,6 +175,18 @@ const GroupEntry = (props) => {
               `}
               onClick={handleGroupDialogOpen}
             />
+            <Typography
+              variant="subtitle1"
+              component="div"
+              css={css`
+                line-height: ${accSummHeight}px;
+                height: ${accSummHeight}px;
+                flex-grow: 1;
+                overflow: hidden;
+                display: inline-block;
+              `}>
+              {group.isRunning && `[${convertSeconds(elapsedTime)}]`}
+            </Typography>
           </Box>
 
           <GroupMenu
@@ -173,6 +201,25 @@ const GroupEntry = (props) => {
             <Droppable droppableId="droppable-file">
               {(provided, snapshot) => (
                 <div {...provided.droppableProps} ref={provided.innerRef}>
+                  <Stack spacing={0}>
+                    <Typography variant="body2" noWrap gutterBottom>
+                      <b>LOG Path:</b>{" "}
+                      {group.settings.logOutputFolder
+                        ? pathShorten(group.settings.logOutputFolder, 80, true)
+                        : "Not Defined"}
+                    </Typography>
+                    <Typography variant="body2" noWrap gutterBottom>
+                      <b>LST Path:</b>{" "}
+                      {group.settings.lstOutputFolder
+                        ? pathShorten(group.settings.lstOutputFolder, 80, true)
+                        : "Not Defined"}
+                    </Typography>
+                    {group.settings.sysParms && (
+                      <Typography variant="body2" noWrap gutterBottom>
+                        <b>SysParms:</b> {group.settings.sysParms}
+                      </Typography>
+                    )}
+                  </Stack>
                   {group.files.map((v, i) =>
                     files.find((e) => e.id === v).isHidden && group.isShowHidden === false ? (
                       <div key={v} />

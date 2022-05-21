@@ -16,6 +16,7 @@ import { memo, useState, useEffect } from "react";
 import FileContextMenu from "./FileContextMenu";
 import Alert from "@mui/material/Alert";
 import Stack from "@mui/material/Stack";
+import { convertSeconds } from "../app/utils";
 
 const FileEntry = (props) => {
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -33,19 +34,6 @@ const FileEntry = (props) => {
   );
 
   const dispatch = useDispatch();
-
-  const convertSeconds = (seconds) => {
-    var convert = function (x) {
-      return x < 10 ? "0" + x : x;
-    };
-    return (
-      convert(parseInt(seconds / (60 * 60))) +
-      ":" +
-      convert(parseInt((seconds / 60) % 60)) +
-      ":" +
-      convert(seconds % 60)
-    );
-  };
 
   const getErrorString = () => {
     let e = "";
@@ -177,36 +165,6 @@ const FileEntry = (props) => {
     dispatch(runLogViewer({ logViewerPath, logPath: file.log.logPath }));
   };
 
-  const pathShorten = (str, maxLen, removeFilename) => {
-    let splitter = "\\",
-      tokens = str.split(splitter),
-      maxLength = maxLen || 25,
-      drive = str.indexOf(":") > -1 ? tokens[0] : "",
-      fileName = tokens[tokens.length - 1],
-      len = removeFilename ? drive.length : drive.length + fileName.length,
-      remLen = maxLength - len - 5, // remove the current lenth and also space for 3 dots and 2 slashes
-      path,
-      lenA,
-      lenB,
-      pathA,
-      pathB;
-    //remove first and last elements from the array
-    tokens.splice(0, 1);
-    tokens.splice(tokens.length - 1, 1);
-    //recreate our path
-    path = tokens.join(splitter);
-    //handle the case of an odd length
-    lenA = Math.ceil(remLen / 2);
-    lenB = Math.floor(remLen / 2);
-    //rebuild the path from beginning and end
-    pathA = path.substring(0, lenA);
-    pathB = path.substring(path.length - lenB);
-    path = drive + splitter + pathA + "..." + pathB + splitter;
-    path = path + (removeFilename ? "" : fileName);
-    //console.log(tokens, maxLength, drive, fileName, len, remLen, pathA, pathB);
-    return path;
-  };
-
   return (
     <Accordion
       disableGutters
@@ -284,7 +242,10 @@ const FileEntry = (props) => {
             `}
             sx={
               (!file.isEnabled || !groupEnabled ? { color: "#aaaaaa" } : {},
-              file.isHidden ? { fontStyle: "italic", color: "#777777" } : {})
+              file.isHidden ? { fontStyle: "italic", color: "#777777" } : {},
+              file.fileInfo.fileExist === false
+                ? { fontStyle: "italic", textDecoration: "line-through", color: "#770000" }
+                : {})
             }>
             {file.file.name.toUpperCase()}{" "}
             {(file.isRunning || file.isLogChecking) && `[${convertSeconds(elapsedTime)}]`}
@@ -302,6 +263,7 @@ const FileEntry = (props) => {
       </AccordionSummary>
       <AccordionDetails sx={{ borderTop: "1px solid rgba(0, 0, 0, .125)" }}>
         <Typography
+          gutterBottom
           variant="subtitle2"
           onClick={file.logInfo.fileExist ? handleLogClick : null}
           sx={
@@ -314,9 +276,11 @@ const FileEntry = (props) => {
                 }
               : {}
           }>
-          LOG: {file.logInfo.fileExist ? pathShorten(file.log.logPath, 70, false) : <em>No Log file found</em>}
+          LOG: {file.logInfo.fileExist ? file.log.logName : <em>No Log file found</em>}
         </Typography>
-        {file.isEnabled && groupEnabled ? (
+        {file.isEnabled &&
+        groupEnabled &&
+        (file.messages.numErrors > 0 || file.messages.numWarnings > 0 || file.messages.numNoticeAll > 0) ? (
           <Stack sx={{ width: "100%" }} spacing={0.5}>
             {file.messages.numErrors ? (
               <Alert sx={{ padding: "0px 6px" }} variant="outlined" severity="error">

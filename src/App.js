@@ -16,8 +16,9 @@ import {
   setFileRunning,
   onApplicationClose,
   setSaved,
+  setIsLoading,
 } from "./features/job/jobSlice";
-import { Grid, Container } from "@mui/material";
+import { Grid, Container, Backdrop, CircularProgress } from "@mui/material";
 import WiseAppBar from "./components/WiseAppBar";
 import JobGroup from "./components/JobGroup";
 import { Scrollbars } from "react-custom-scrollbars-2";
@@ -27,10 +28,20 @@ function App() {
   //const job = useSelector((state) => state.job.value);
   const dispatch = useDispatch();
   const metadataPath = useSelector((state) => state.application.value.metadataPath);
-  const isClosed = useSelector((state) => state.job.value.isAppClosed);
+  //const isAppClosing = useSelector((state) => state.job.value.isAppClosing);
   const isLoading = useSelector((state) => state.job.value.isLoading);
+  const isSaved = useSelector((state) => state.job.value.isSaved);
+  /*
+  const anyFileRunning = useSelector(
+    (state) => state.job.value.files.map(({ isRunning }) => isRunning).every((e) => e === false),
+    shallowEqual
+  );
+*/
   const anyFileRunning = useSelector((state) =>
-    state.job.value.files.map(({ isRunning }) => isRunning).every((e) => e === false)
+    state.job.value.files
+      .map(({ isRunning, groupId }) => (isRunning ? groupId : null))
+      .filter((e) => e !== null)
+      .toString()
   );
 
   //to watch changes to decide if we need saving
@@ -42,7 +53,10 @@ function App() {
       state.job.value.groups.map(({ isEnabled, isShowHidden, baseDir }) => [isEnabled, isShowHidden, baseDir]).flat(),
     shallowEqual
   );
-  const wGroupsSetting = useSelector((state) => state.job.value.groups.map(({ settings }) => settings), shallowEqual);
+  const wGroupsSetting = useSelector(
+    (state) => state.job.value.groups.map(({ settings }) => settings).flat(),
+    shallowEqual
+  );
   const wFiles = useSelector(
     (state) =>
       state.job.value.files
@@ -52,28 +66,31 @@ function App() {
   );
 
   useEffect(() => {
-    if (isLoading === false) {
+    if (isLoading === "No" && isSaved === true) {
       dispatch(setSaved(false));
     }
     if (wGroupsIds.length === 0) {
+      console.log("group init");
       dispatch(groupInit());
     }
   }, [wFilesId, wGroupsTitle, wGroupsIds, wGroups, wGroupsSetting, wFiles]);
 
   useEffect(() => {
-    dispatch(setJobRunning(!anyFileRunning));
+    console.log(anyFileRunning);
+    dispatch(setJobRunning(anyFileRunning));
   }, [anyFileRunning]);
 
+  /*
   useEffect(() => {
     if (isClosed) {
       window.fileAPI.applicationClosed();
     }
   }, [isClosed]);
-
+*/
   useEffect(() => {
     dispatch(appInitAsync());
     dispatch(globalSettingsInitAsync());
-    dispatch(groupInit());
+
     setTimeout(() => {
       dispatch(setSaved(true));
     }, 300);
@@ -88,11 +105,9 @@ function App() {
       console.log("Rendered closing");
       dispatch(onApplicationClose());
     });
-    //console.log(workdir);
   }, []);
 
   useEffect(() => {
-    //console.log(metadataPath);
     metadataPath && dispatch(locallSettingsInitAsync(metadataPath));
   }, [metadataPath]);
 
@@ -120,6 +135,9 @@ function App() {
           </Scrollbars>
         </Container>
       </Grid>
+      <Backdrop sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }} open={isLoading === "Loading"}>
+        <CircularProgress />
+      </Backdrop>
     </Grid>
   );
 }

@@ -16,7 +16,9 @@ import {
   setSaved,
   clearLogCheckResults,
   onApplicationClose,
-  getSavedJobsListAsync,
+  onJobLoad,
+  clearJob,
+  setJobSaveRequest,
 } from "../features/job/jobSlice";
 import { useDispatch, useSelector } from "react-redux";
 import SaveJobDialog from "./SaveJobDialog";
@@ -28,6 +30,7 @@ export default function MainMenu() {
   const metadataPath = useSelector((state) => state.application.value.metadataPath);
   const isLoading = useSelector((state) => state.job.value.isLoading);
   const isRunning = useSelector((state) => state.job.value.isRunning);
+  const isAppClosing = useSelector((state) => state.job.value.isAppClosing);
   const jobSaveRequest = useSelector((state) => state.job.value.jobSaveRequest);
   const title = useSelector((state) => state.job.value.title);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -46,13 +49,16 @@ export default function MainMenu() {
   }, [jobSaveRequest]);
 
   useEffect(() => {
-    if (isLoading) {
-      dispatch(updateJobAsync());
-      dispatch(clearLogCheckResults({ fileId: null, groupId: null }));
+    if (isLoading === "Loading") {
       dispatch(setSaved(true));
+      dispatch(updateJobAsync()).then(() => {
+        dispatch(clearLogCheckResults({ fileId: null, groupId: null }));
+        //dispatch(setIsLoading("Loaded"));
+      });
+
       setTimeout(() => {
-        dispatch(setIsLoading(false));
-      }, 500);
+        dispatch(setIsLoading("No"));
+      }, 1500);
     }
   }, [isLoading]);
 
@@ -62,8 +68,8 @@ export default function MainMenu() {
 
   const handleLoadJob = (name) => {
     //dispatch(getSavedJobsListAsync(metadataPath));
-    dispatch(loadJobAsync(metadataPath, name));
     setLoadDialogOpen(false);
+    dispatch(loadJobAsync({ metadataPath, name }));
     setAnchorEl(null);
   };
 
@@ -101,6 +107,10 @@ export default function MainMenu() {
   const handleLoadDialogOpen = (event) => {
     event.stopPropagation();
     setAnchorEl(null);
+    async function wait() {
+      await dispatch(onJobLoad());
+    }
+    wait();
     setLoadDialogOpen(true);
   };
 
@@ -109,7 +119,15 @@ export default function MainMenu() {
       dispatch(setTitle(title));
       dispatch(saveJob({ path: metadataPath }));
       dispatch(setSaved(true));
-      if (jobSaveRequest) dispatch(onApplicationClose(true));
+      if (jobSaveRequest && isAppClosing) {
+        dispatch(onApplicationClose({ closeImmidiate: true }));
+      }
+      dispatch(setJobSaveRequest(false));
+    } else if (action === "CANCEL") {
+      if (jobSaveRequest && isAppClosing) {
+        dispatch(onApplicationClose({ closeImmidiate: true }));
+      }
+      dispatch(setJobSaveRequest(false));
     }
   };
 
@@ -170,7 +188,7 @@ export default function MainMenu() {
         handleOpen={setSaveDialogOpen}
       />
       <LoadJobDialog
-        isOpen={loadDialogOpen}
+        isOpen={loadDialogOpen && !jobSaveRequest}
         handleCancel={handleLoadDialogClose}
         handleLoad={handleLoadJob}
         metadataPath={metadataPath}
