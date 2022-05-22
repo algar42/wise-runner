@@ -5,10 +5,11 @@ import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import { useSelector, useDispatch } from "react-redux";
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo, useCallback } from "react";
 import { syncGroupSysParms } from "../features/job/jobSlice";
+import { MemorySharp } from "@mui/icons-material";
 
-export default function GroupSettingsDialog(props) {
+function GroupSettingsDialog(props) {
   const { handleCancel, handleSave, isOpen, groupId } = props;
   const { settings, title } = useSelector((state) => state.job.value.groups.find((e) => e.id === groupId));
 
@@ -39,6 +40,10 @@ export default function GroupSettingsDialog(props) {
       default:
         break;
     }
+  };
+
+  const handleSync = () => {
+    dispatch(syncGroupSysParms(sysParms));
   };
 
   return (
@@ -92,7 +97,7 @@ export default function GroupSettingsDialog(props) {
             />
           </Grid>
           <Grid item xs={3}>
-            <Button size="small" onClick={() => dispatch(syncGroupSysParms(sysParms))}>
+            <Button size="small" onClick={handleSync}>
               copy to all groups
             </Button>
           </Grid>
@@ -105,3 +110,5 @@ export default function GroupSettingsDialog(props) {
     </Dialog>
   );
 }
+
+export default memo(GroupSettingsDialog);

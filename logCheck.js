@@ -42,7 +42,7 @@ class logChecker {
     r_nm: /(^NOTE\s*\d*\s*[-]*\s*\d*:\s*\[[a-zA-Z_]+\])/,
     r_np: /(MERGE statement|The SAS System stopped)/,
     r_nr: /(No observations|no observations|is uninitialized|axis range|values have been converted|too small|Invalid data|was not found or could not be loaded|unable |truncated|Invalid\s+[^\s]*\s*argument|Invalid \(or missing\)\s+[^\s]*\s*argument)/,
-    r_no: /(Division by zero|could not be performed|No variables|Missing value|repeats of BY values|has the same name|were 0 observations|Interactivity disabled|hardware font was specified|does not exist)/,
+    r_no: /(Division by zero|could not be performed|No variables|Missing value|repeats of BY values|has the same name|were 0 observations|Interactivity disabled|hardware font was specified|does not exist|will continue to check)/,
     r_nmis: /(SAS Campus Drive)/,
   };
 

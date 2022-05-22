@@ -8,7 +8,7 @@ import DragIndicatorOutlinedIcon from "@mui/icons-material/DragIndicatorOutlined
 import ModeEditOutlineOutlinedIcon from "@mui/icons-material/ModeEditOutlineOutlined";
 import { Box, Checkbox, Stack } from "@mui/material";
 import { css, jsx } from "@emotion/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo, useCallback } from "react";
 import EditGroupTitle from "./EditGroupTitle";
 import { groupTitleEdited, groupEnabled, dragFileMove, runApp, clearLogCheckResults } from "../features/job/jobSlice";
 //import FileEntry from "./FileEntry";
@@ -17,6 +17,8 @@ import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import GroupMenu from "./GroupMenu";
 import { useSelector, useDispatch, shallowEqual } from "react-redux";
 import { pathShorten, convertSeconds } from "../app/utils";
+import GroupStatusNotifier from "./GroupStatusNotifier";
+import { status as statuses } from "../app/constants";
 
 const GroupEntry = (props) => {
   const accSummHeight = 35;
@@ -25,22 +27,59 @@ const GroupEntry = (props) => {
   const [editGroupDialogOpen, setDialogOpen] = useState(false);
   const [groupExpanded, setGroupExpanded] = useState(false);
 
+  const { title, isEnabled, files, settings, isShowHidden, isRunning, status } = useSelector(
+    (state) => state.job.value.groups.find((e) => e.id === groupId),
+    shallowEqual
+  );
+  const { sasExecPath, sasCfgPath, sasParams, sasParams1, runSasHidden } = useSelector(
+    (state) => state.application.value.settings
+  );
+  const file = useSelector(
+    (state) =>
+      state.job.value.files
+        .filter((e) => e.groupId === groupId)
+        .map((e) => {
+          return {
+            isFileEnabled: e.isEnabled,
+            isHidden: e.isHidden,
+            id: e.id,
+            grpId: e.groupId,
+            fileInfo: e.fileInfo,
+          };
+        }),
+    shallowEqual
+  );
+
+  const anyFileEnabled = useSelector(
+    (state) =>
+      state.job.value.files
+        .filter((e) => e.groupId === groupId)
+        .map(({ isEnabled }) => isEnabled)
+        .every((e) => e === false),
+    shallowEqual
+  );
+
+  const anyRunError = useSelector(
+    (state) =>
+      state.job.value.files
+        .filter((e) => e.groupId === groupId)
+        .map((f) => {
+          return { runError: f.runError, exitCode: f.exitCode };
+        })
+        .some((e) => e.runError !== null || e.exitCode > 0),
+    shallowEqual
+  );
+
   const dispatch = useDispatch();
 
-  const handleGroupExpanded = (event, expanded) => {
+  const handleGroupExpanded = useCallback((event, expanded) => {
     setGroupExpanded(expanded);
-  };
+  }, []);
 
   const handleGroupEnabled = (event) => {
     const enabled = event.target.checked;
     dispatch(groupEnabled({ groupId, enabled }));
   };
-
-  const group = useSelector((state) => state.job.value.groups.find((e) => e.id === groupId), shallowEqual);
-  const { sasExecPath, sasCfgPath, sasParams, sasParams1, runSasHidden } = useSelector(
-    (state) => state.application.value.settings
-  );
-  const files = useSelector((state) => state.job.value.files.filter((e) => e.groupId === groupId));
 
   const handleGroupDialogOpen = (event) => {
     event.stopPropagation();
@@ -54,11 +93,16 @@ const GroupEntry = (props) => {
   };
 
   const handleRunGroup = () => {
-    if (group.files.length > 0) {
+    if (files.length > 0) {
       dispatch(clearLogCheckResults({ groupId }));
+
       dispatch(
         runApp({
-          fileIds: group.files.filter((e) => files.find((f) => f.id === e && f.isEnabled)),
+          fileIds: files.filter((e) =>
+            file.find((f) => {
+              return f.id === e && f.isFileEnabled && f.fileInfo.fileExist;
+            })
+          ),
           sasExecPath,
           sasCfgPath,
           sasParams,
@@ -77,20 +121,27 @@ const GroupEntry = (props) => {
     dispatch(dragFileMove({ groupId, oldIndex, newIndex }));
   };
 
-  const DragHandle = () => (
-    <DragIndicatorOutlinedIcon
-      css={css`
-        color: rgba(0, 0, 0, 0.5);
-        line-height: ${accSummHeight}px;
-        height: ${accSummHeight}px;
-      `}
-      onClick={(e) => e.stopPropagation()}
-    />
+  const DragHandle = useCallback(
+    () => (
+      <DragIndicatorOutlinedIcon
+        css={css`
+          color: rgba(0, 0, 0, 0.5);
+          line-height: ${accSummHeight}px;
+          height: ${accSummHeight}px;
+        `}
+        onClick={(e) => e.stopPropagation()}
+      />
+    ),
+    []
   );
+
+  const handleGroupMenuClick = useCallback((e) => {
+    e.stopPropagation();
+  }, []);
 
   useEffect(() => {
     let interval = null;
-    let status = group.isRunning;
+    let status = isRunning;
     if (status) {
       interval = setInterval(() => {
         setElapsedTime((elapsedTime) => elapsedTime + 1);
@@ -100,7 +151,7 @@ const GroupEntry = (props) => {
       setElapsedTime(0);
     }
     return () => clearInterval(interval);
-  }, [group.isRunning, elapsedTime]);
+  }, [isRunning, elapsedTime]);
 
   return (
     <div>
@@ -112,7 +163,7 @@ const GroupEntry = (props) => {
         elevation={0}
         sx={{ borderBottom: 1, borderColor: "rgba(0,0,0,0.2)" }}
         css={
-          !group.isEnabled &&
+          !isEnabled &&
           css`
             background-color: rgba(230, 230, 230, 1);
           `
@@ -138,7 +189,7 @@ const GroupEntry = (props) => {
             disableRipple
             onClick={(e) => e.stopPropagation()}
             onChange={handleGroupEnabled}
-            checked={group.isEnabled && true}
+            checked={isEnabled && true}
           />
           <Box
             css={css`
@@ -157,7 +208,7 @@ const GroupEntry = (props) => {
                 overflow: hidden;
                 display: inline-block;
               `}>
-              {group.title}
+              {title}
             </Typography>
             <ModeEditOutlineOutlinedIcon
               css={css`
@@ -185,15 +236,20 @@ const GroupEntry = (props) => {
                 overflow: hidden;
                 display: inline-block;
               `}>
-              {group.isRunning && `[${convertSeconds(elapsedTime)}]`}
+              {isRunning && `[${convertSeconds(elapsedTime)}]`}
             </Typography>
           </Box>
-
+          {status !== statuses.UNKNOWN || anyRunError ? (
+            <GroupStatusNotifier count={-1} disabled={!isEnabled} icon={anyRunError ? "warning" : status} />
+          ) : (
+            <div />
+          )}
           <GroupMenu
             groupId={groupId}
             handleExpanded={handleGroupExpanded}
             handleRunGroup={handleRunGroup}
-            onClick={(e) => e.stopPropagation()}
+            anyFileEnabled={anyFileEnabled}
+            onClick={handleGroupMenuClick}
           />
         </AccordionSummary>
         <DragDropContext onDragEnd={handleFileDragEnd}>
@@ -204,27 +260,23 @@ const GroupEntry = (props) => {
                   <Stack spacing={0}>
                     <Typography variant="body2" noWrap gutterBottom>
                       <b>LOG Path:</b>{" "}
-                      {group.settings.logOutputFolder
-                        ? pathShorten(group.settings.logOutputFolder, 80, true)
-                        : "Not Defined"}
+                      {settings.logOutputFolder ? pathShorten(settings.logOutputFolder, 80, true) : "Not Defined"}
                     </Typography>
                     <Typography variant="body2" noWrap gutterBottom>
                       <b>LST Path:</b>{" "}
-                      {group.settings.lstOutputFolder
-                        ? pathShorten(group.settings.lstOutputFolder, 80, true)
-                        : "Not Defined"}
+                      {settings.lstOutputFolder ? pathShorten(settings.lstOutputFolder, 80, true) : "Not Defined"}
                     </Typography>
-                    {group.settings.sysParms && (
+                    {settings.sysParms && (
                       <Typography variant="body2" noWrap gutterBottom>
-                        <b>SysParms:</b> {group.settings.sysParms}
+                        <b>SysParms:</b> {settings.sysParms}
                       </Typography>
                     )}
                   </Stack>
-                  {group.files.map((v, i) =>
-                    files.find((e) => e.id === v).isHidden && group.isShowHidden === false ? (
+                  {files.map((v, i) =>
+                    file.find((e) => e.id === v).isHidden && isShowHidden === false ? (
                       <div key={v} />
                     ) : (
-                      <Draggable draggableId={v} key={v} index={i} isDragDisabled={!group.isEnabled}>
+                      <Draggable draggableId={v} key={v} index={i} isDragDisabled={!isEnabled}>
                         {(provided, snapshot) => (
                           <div ref={provided.innerRef} {...provided.draggableProps}>
                             <MemoFileEntry key={v} fileId={v} groupId={groupId} handle={provided.dragHandleProps} />
@@ -244,7 +296,7 @@ const GroupEntry = (props) => {
       <EditGroupTitle
         isOpen={editGroupDialogOpen}
         groupId={groupId}
-        groupTitle={group.title}
+        groupTitle={title}
         handleClose={handleGroupDialogClose}
         handleOpen={setDialogOpen}
       />
@@ -252,4 +304,11 @@ const GroupEntry = (props) => {
   );
 };
 
-export default GroupEntry;
+//export default GroupEntry;
+export default memo(GroupEntry);
+/*
+{status && status !== statuses.UNKNOWN ? (
+            <StatusNotifier count={0} disabled={!isEnabled} icon={status} />
+          ) : (
+            <div />
+          )}*/

@@ -135,6 +135,12 @@ export default function MainMenu() {
     setLoadDialogOpen(false);
   };
 
+  const handleNewJob = (event) => {
+    event.stopPropagation();
+    setAnchorEl(null);
+    dispatch(clearJob());
+  };
+
   return (
     <Box>
       <IconButton
@@ -165,6 +171,9 @@ export default function MainMenu() {
         MenuListProps={{
           "aria-labelledby": "main-button",
         }}>
+        <MenuItem dense onClick={handleNewJob}>
+          New Job
+        </MenuItem>
         <MenuItem dense onClick={handleLoadDialogOpen}>
           Load Job
         </MenuItem>

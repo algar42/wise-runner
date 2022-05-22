@@ -15,35 +15,38 @@ import {
   deleteGroup,
   setAllFilesChecked,
 } from "../features/job/jobSlice";
-import { useDispatch, useSelector } from "react-redux";
+import { shallowEqual, useDispatch, useSelector } from "react-redux";
 import GroupSettingsDialog from "./GroupSettingsDilaog";
-import { useState } from "react";
+import { useState, memo, useCallback } from "react";
 import { Divider } from "@mui/material";
 
-export default function GroupMenu(props) {
+function GroupMenu(props) {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
   const dispatch = useDispatch();
-  const { groupId, handleExpanded, handleRunGroup } = props;
-  const { hasHiddenFiles, isDir, baseDir, isShowHidden } = useSelector((state) =>
-    state.job.value.groups.find((e) => e.id === groupId)
+  const { groupId, handleExpanded, handleRunGroup, anyFileEnabled } = props;
+  const { hasHiddenFiles, isDir, baseDir, isShowHidden } = useSelector(
+    (state) => state.job.value.groups.find((e) => e.id === groupId),
+    shallowEqual
   );
   const isRunning = useSelector((state) => state.job.value.isRunning);
 
   const [groupSettingsOpen, setgroupSettigsOpen] = useState(false);
 
-  const handleSettingsOpen = (event) => {
+  const handleSettingsOpen = useCallback((event) => {
     setAnchorEl(null);
     event.stopPropagation();
     event.nativeEvent.stopImmediatePropagation();
     setgroupSettigsOpen(true);
-  };
-  const handleSettingsCancel = (event) => {
+  }, []);
+
+  const handleSettingsCancel = useCallback((event) => {
     event.stopPropagation();
     setAnchorEl(null);
     setgroupSettigsOpen(false);
-  };
-  const handleSettingsSave = (event, props) => {
+  }, []);
+
+  const handleSettingsSave = useCallback((event, props) => {
     event.stopPropagation();
     //console.log(props);
     setgroupSettigsOpen(false);
@@ -58,7 +61,7 @@ export default function GroupMenu(props) {
       })
     );
     dispatch(updateJobAsync());
-  };
+  }, []);
 
   const handleClick = (event) => {
     event.stopPropagation();
@@ -113,17 +116,23 @@ export default function GroupMenu(props) {
     setAnchorEl(null);
   };
 
-  const handleDeleteGroup = (event) => {
-    setAnchorEl(null);
-    event.stopPropagation();
-    dispatch(deleteGroup({ groupId }));
-  };
+  const handleDeleteGroup = useCallback(
+    (event) => {
+      setAnchorEl(null);
+      event.stopPropagation();
+      dispatch(deleteGroup({ groupId }));
+    },
+    [groupId]
+  );
 
-  const handleSetAllChecked = (event, isEnabled) => {
-    setAnchorEl(null);
-    event.stopPropagation();
-    dispatch(setAllFilesChecked({ groupId, isEnabled }));
-  };
+  const handleSetAllChecked = useCallback(
+    (event, isEnabled) => {
+      setAnchorEl(null);
+      event.stopPropagation();
+      dispatch(setAllFilesChecked({ groupId, isEnabled }));
+    },
+    [groupId]
+  );
 
   return (
     <Box>
@@ -162,7 +171,7 @@ export default function GroupMenu(props) {
           Add Folder
         </MenuItem>
         <Divider />
-        <MenuItem dense onClick={handleRunGroupItem}>
+        <MenuItem dense onClick={handleRunGroupItem} disabled={anyFileEnabled === true}>
           Run Group
         </MenuItem>
         <MenuItem dense onClick={handleSortGroup}>
@@ -199,3 +208,4 @@ export default function GroupMenu(props) {
     </Box>
   );
 }
+export default memo(GroupMenu);

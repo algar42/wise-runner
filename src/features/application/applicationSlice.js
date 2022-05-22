@@ -60,7 +60,6 @@ export const appInitAsync = () => async (dispatch) => {
 };
 export const globalSettingsInitAsync = () => async (dispatch) => {
   const init = await window.fileAPI.getDb("globCfgDb", "db.settings");
-  console.log(init);
   dispatch(globalSettingsInit(init));
 };
 

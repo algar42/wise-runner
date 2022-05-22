@@ -20,7 +20,7 @@ import {
 } from "./features/job/jobSlice";
 import { Grid, Container, Backdrop, CircularProgress } from "@mui/material";
 import WiseAppBar from "./components/WiseAppBar";
-import JobGroup from "./components/JobGroup";
+import MemoJobGroup from "./components/JobGroup";
 import { Scrollbars } from "react-custom-scrollbars-2";
 
 function App() {
@@ -70,13 +70,11 @@ function App() {
       dispatch(setSaved(false));
     }
     if (wGroupsIds.length === 0) {
-      console.log("group init");
       dispatch(groupInit());
     }
   }, [wFilesId, wGroupsTitle, wGroupsIds, wGroups, wGroupsSetting, wFiles]);
 
   useEffect(() => {
-    console.log(anyFileRunning);
     dispatch(setJobRunning(anyFileRunning));
   }, [anyFileRunning]);
 
@@ -131,7 +129,7 @@ function App() {
             autoHideTimeout={500}
             // Duration for hide animation in ms.
             autoHideDuration={200}>
-            <JobGroup />
+            <MemoJobGroup />
           </Scrollbars>
         </Container>
       </Grid>

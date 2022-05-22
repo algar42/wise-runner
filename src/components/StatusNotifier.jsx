@@ -1,9 +1,10 @@
 import IconButton from "@mui/material/IconButton";
 import Badge from "@mui/material/Badge";
-import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
-import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
-import DangerousOutlinedIcon from "@mui/icons-material/DangerousOutlined";
-import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
+
+import ClearOutlinedIcon from "@mui/icons-material/ClearOutlined";
+import PriorityHighOutlinedIcon from "@mui/icons-material/PriorityHighOutlined";
+import QuestionMarkOutlinedIcon from "@mui/icons-material/QuestionMarkOutlined";
+import CheckOutlinedIcon from "@mui/icons-material/CheckOutlined";
 
 function notificationsLabel(count) {
   if (count === 0) {
@@ -14,24 +15,24 @@ function notificationsLabel(count) {
   return `${count} notifications`;
 }
 
-export default function BadgeNotifier(props) {
+export default function StatusNotifier(props) {
   const { count, icon, disabled } = props;
-  const iconActiveStyle = { fontSize: "16px" };
-  const iconInactiveStyle = { fontSize: "16px", color: "rgba(0, 0, 0, 0.3)" };
+  const iconActiveStyle = { fontSize: "18px" };
+  const iconInactiveStyle = { fontSize: "18px", color: "rgba(0, 0, 0, 0.3)" };
   const cnt = disabled ? 0 : count;
 
   const SelectedIcon = () => {
     switch (icon) {
       case "error":
-        return <DangerousOutlinedIcon color={icon} sx={cnt ? iconActiveStyle : iconInactiveStyle} />;
+        return <ClearOutlinedIcon color={icon} sx={cnt ? iconActiveStyle : iconInactiveStyle} />;
       case "warning":
-        return <WarningAmberOutlinedIcon color={icon} sx={cnt ? iconActiveStyle : iconInactiveStyle} />;
+        return <PriorityHighOutlinedIcon color={icon} sx={cnt ? iconActiveStyle : iconInactiveStyle} />;
 
       case "info":
-        return <ErrorOutlineOutlinedIcon color={icon} sx={cnt ? iconActiveStyle : iconInactiveStyle} />;
+        return <QuestionMarkOutlinedIcon color={icon} sx={cnt ? iconActiveStyle : iconInactiveStyle} />;
 
       case "success":
-        return <CheckCircleOutlineOutlinedIcon color={icon} sx={cnt ? iconActiveStyle : iconInactiveStyle} />;
+        return <CheckOutlinedIcon color={icon} sx={cnt ? iconActiveStyle : iconInactiveStyle} />;
       default:
         break;
     }

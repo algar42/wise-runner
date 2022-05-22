@@ -9,6 +9,7 @@ import { Box, Checkbox } from "@mui/material";
 import { css, jsx } from "@emotion/react";
 import { fileEnabled, fileHide, runApp, runLogViewer, clearLogCheckResults } from "../features/job/jobSlice";
 import BadgeNotifier from "./BadgeNotifier";
+import StatusNotifier from "./StatusNotifier";
 import { useSelector, useDispatch, shallowEqual } from "react-redux";
 import PriorityToggleGroup from "./PriorityToggleGroup";
 import { useSlideScroll } from "../app/useSlideScroll";
@@ -255,7 +256,7 @@ const FileEntry = (props) => {
         <BadgeNotifier count={file.messages.numErrors} disabled={!file.isEnabled || !groupEnabled} icon="error" />
         <BadgeNotifier count={file.messages.numWarnings} disabled={!file.isEnabled || !groupEnabled} icon="warning" />
         <BadgeNotifier count={file.messages.numNotice} disabled={!file.isEnabled || !groupEnabled} icon="info" />
-        <BadgeNotifier
+        <StatusNotifier
           count={file.exitCode !== null || file.runError !== null ? -1 : 0}
           disabled={!file.isEnabled || !groupEnabled}
           icon={file.runError !== null ? "error" : exitCodeColor(file.exitCode)}
@@ -314,6 +315,7 @@ const FileEntry = (props) => {
         handleHide={handleContextMenuFileHide}
         handleAppRun={handleContextMenuAppRun}
         isHidden={file.isHidden}
+        isExist={file.fileInfo.fileExist}
       />
     </Accordion>
   );

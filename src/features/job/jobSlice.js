@@ -219,7 +219,6 @@ export const updateDirAsync = (groupId, baseDir) => async (dispatch) => {
     const files = dir
       .map((e) => window.fileAPI.path.parse(window.fileAPI.path.join(baseDir, e.name)))
       .filter((e) => e.ext.toUpperCase() === ".SAS");
-    console.log(files);
     dispatch(addDirAsync({ groupId, filesUpdate: files.map((e) => window.fileAPI.path.join(e.dir, e.base)) }));
     //console.log(files);
   });
@@ -270,12 +269,12 @@ export const jobSlice = createSlice({
       state.value.isLoading = action.payload;
     },
     setJobRunning: (state, action) => {
-      let groupIndex = null;
-      if (action.payload !== "") groupIndex = state.value.groups.findIndex((group) => group.id === action.payload);
       state.value.isRunning = Boolean(action.payload);
-      if (groupIndex !== null) {
-        state.value.groups[groupIndex].isRunning = Boolean(action.payload);
-        console.log(groupIndex);
+      if (action.payload !== "") {
+        for (let i = 0; i < state.value.groups.length; i++) {
+          if (state.value.groups[i].id === action.payload) state.value.groups[i].isRunning = true;
+          else state.value.groups[i].isRunning = false;
+        }
       } else {
         for (let i = 0; i < state.value.groups.length; i++) {
           state.value.groups[i].isRunning = false;
@@ -470,6 +469,8 @@ export const jobSlice = createSlice({
           state.value.files[fileIndex].messages[key] = null;
         }
       } else if (action.payload.groupId) {
+        const groupIndex = state.value.groups.findIndex((group) => group.id === action.payload.groupId);
+        state.value.groups[groupIndex].status = status.UNKNOWN;
         for (const [key] of Object.entries(state.value.files)) {
           if (state.value.files[key].groupId === action.payload.groupId) {
             state.value.files[key].runError = null;
@@ -487,10 +488,14 @@ export const jobSlice = createSlice({
             state.value.files[key].messages[msg] = null;
           }
         }
+        for (const [key] of Object.entries(state.value.groups)) {
+          state.value.groups[key].status = status.UNKNOWN;
+        }
       }
     },
     logResults: (state, action) => {
       const fileIndex = state.value.files.findIndex((file) => file.id === action.payload.fileId);
+      const groupIndex = state.value.groups.findIndex((group) => group.id === state.value.files[fileIndex].groupId);
       state.value.files[fileIndex].messages.numErrors =
         action.payload.e + action.payload.em + action.payload.eq + action.payload.eo;
       state.value.files[fileIndex].messages.numWarnings = action.payload.w + action.payload.wm + action.payload.wq;
@@ -510,6 +515,24 @@ export const jobSlice = createSlice({
       state.value.files[fileIndex].messages.np = action.payload.np;
 
       if (action.payload.end) state.value.files[fileIndex].isLogChecking = false;
+
+      if (state.value.groups[groupIndex].status !== status.PROBLEM) {
+        if (
+          state.value.files[fileIndex].messages.numErrors > 0 ||
+          state.value.files[fileIndex].messages.numNotice > 0 ||
+          state.value.files[fileIndex].messages.numWarnings > 0
+        ) {
+          state.value.groups[groupIndex].status = status.PROBLEM;
+        } else if (
+          state.value.files[fileIndex].messages.numErrors === 0 &&
+          state.value.files[fileIndex].messages.numNotice === 0 &&
+          state.value.files[fileIndex].messages.numWarnings === 0
+        ) {
+          state.value.groups[groupIndex].status = status.SUCCESS;
+        } else {
+          state.value.groups[groupIndex].status = status.UNKNOWN;
+        }
+      }
     },
     runCheckLog: (state, action) => {
       if (action.payload && action.payload.hasOwnProperty("exitCode")) {

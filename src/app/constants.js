@@ -1,5 +1,5 @@
 export const status = {
-  UNKNOWN: "Unknown",
-  SUCCESS: "Success",
-  PROBLEM: "Problems",
+  UNKNOWN: "unknown",
+  SUCCESS: "success",
+  PROBLEM: "warning",
 };
